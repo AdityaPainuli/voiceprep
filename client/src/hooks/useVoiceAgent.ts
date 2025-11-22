@@ -5,7 +5,8 @@ export type LearningItem =
   | { type: 'note'; id: string; title: string; content: string; tags?: string[] }
   | { type: 'visual'; id: string; chartType: 'bar' | 'line' | 'pie' | 'doughnut' | 'radar' | 'mermaid'; data: any; title: string; description?: string }
   | { type: 'code'; id: string; code: string; language: string; explanation?: string }
-  | { type: 'slide'; id: string; title: string; bulletPoints: string[] };
+  | { type: 'slide'; id: string; title: string; bulletPoints: string[] }
+  | { type: 'animation'; id: string; url: string; title: string; description?: string; code?: string };
 
 export const useVoiceAgent = () => {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -34,7 +35,7 @@ export const useVoiceAgent = () => {
   } | null>(null);
 
   // Per-card execution state
-  const [executionStates, setExecutionStates] = useState<Record<string, { isRunning: boolean; output: string | null; isError: boolean }>>({});
+  const [executionStates, setExecutionStates] = useState<Record<string, { isRunning: boolean; output: string | null; isError: boolean; language: string }>>({});
 
   // Global state for main editor (interview mode)
   const [output, setOutput] = useState<string | null>(null);
@@ -127,7 +128,8 @@ export const useVoiceAgent = () => {
                 [data.id]: {
                     isRunning: false,
                     output: data.output,
-                    isError: data.status === 'error'
+                    isError: data.status === 'error',
+                    language: data.language || 'javascript',
                 }
             }));
           } else {
@@ -199,6 +201,17 @@ export const useVoiceAgent = () => {
                 bulletPoints: data.bulletPoints
             }]);
         }
+
+        if (data.type === 'animation') {
+            setLearningStream(prev => [...prev, {
+                type: 'animation',
+                id: Date.now().toString(),
+                url: data.url,
+                title: data.title,
+                description: data.description,
+                code: data.code
+            }]);
+        }
       };
 
       ws.onclose = () => {
@@ -253,7 +266,7 @@ export const useVoiceAgent = () => {
       if (id) {
         setExecutionStates(prev => ({
             ...prev,
-            [id]: { isRunning: true, output: null, isError: false }
+            [id]: { isRunning: true, output: null, isError: false, language: 'javascript' }
         }));
       } else {
         setIsRunning(true);
@@ -315,6 +328,9 @@ export const useVoiceAgent = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: {
         channelCount: 1,
         sampleRate: 24000,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
       }});
       const source = audioContext.createMediaStreamSource(stream);
       

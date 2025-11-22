@@ -3,6 +3,8 @@ import WebSocket from 'ws';
 import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
 import path from 'path';
+import fastifyStatic from '@fastify/static';
+import { ManimService } from './services/ManimService';
 
 dotenv.config();
 
@@ -17,7 +19,27 @@ const fastify = Fastify({
   logger: true
 });
 
-const wss = new WebSocketServer({ port: 8080 });
+// Serve static files (including generated animations)
+fastify.register(fastifyStatic, {
+  root: path.join(process.cwd(), 'public'),
+  prefix: '/', // accessible at http://localhost:8080/animations/...
+});
+
+const manimService = new ManimService();
+
+const startServer = async () => {
+  try {
+    await fastify.listen({ port: 8080, host: '0.0.0.0' });
+    console.log('Fastify server started on port 8080');
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+const wss = new WebSocketServer({ server: fastify.server });
 
 wss.on('connection', (ws) => {
   console.log('Client connected');
@@ -43,33 +65,22 @@ wss.on('connection', (ws) => {
           instructions = 'You are a senior software engineer interviewer. Your goal is to conduct a realistic mock interview. Start by greeting the candidate and asking them which programming language they would like to use for the interview. Once they specify a language, use the "post_question" tool to send them a technical question (e.g., a coding problem or concept check) suitable for a software engineering role. ALWAYS provide 2-3 test cases with the question using the "testCases" parameter. Listen to their response, ask follow-up questions to probe their understanding, and provide constructive feedback on their approach and communication. When the user submits code, analyze it. If the code is incorrect, suboptimal, or could be improved in ANY way (style, performance, readability), you MUST use the "provide_code_correction" tool to show the corrected version. Do not just describe the changes verbally; show them using the tool. Explain the changes verbally while the tool displays the diff. CRITICAL: If the user asks for ANY of the following, you MUST use the "provide_code_correction" tool: suggestions, improvements, optimizations, refactoring, better code, cleaner code, fixing issues, or any request to modify/enhance their code. NEVER give verbal-only suggestions for code changes. ALWAYS show the improved code using the tool, even if they just ask "can you suggest improvements?" or "how can I optimize this?". Verbal explanation alone is FORBIDDEN for code changes. You must show the diff. If the code is correct, praise them. IMPORTANT: When the user submits a CORRECT solution, use the "mark_question_solved" tool to enable the "Next Question" button. Do NOT move to the next question automatically. Wait for the user to click "Next Question" (which will send a "next_question" event) or explicitly ask for it before posting a new question. If the user asks to run the code (or clicks Run), you MUST simulate the execution and use the "provide_execution_output" tool. DO NOT just say the output verbally. You MUST use the tool to display it. If the code is correct, use status="success". If there are errors, use status="error" and provide the EXACT error message and stack trace. Keep the tone professional but encouraging.';
         } else if (mode === 'tutor') {
           const { topic, language, experience } = config;
-          instructions = `You are a friendly and collaborative AI Tutor specializing in ${topic}. The user is a ${experience} in ${language}. Your goal is to teach them about ${topic} in ${language} by building a visual study guide together.
+          instructions = `You are a friendly AI Tutor for ${topic}. User is a ${experience} in ${language}.
           
-          Start by introducing yourself as their tutor for ${topic} and ask them what specific aspect they'd like to start with or if they want a general overview.
+          GOAL: Teach ${topic} visually.
           
-          TEACHING STYLE: "VISUAL PRESENTER"
+          RULES:
+          1. **BE CONCISE**: Speak clearly and briefly. Avoid long monologues.
+          2. **NO REPETITION**: Do not repeat introductions or what you just said.
+          3. **VISUAL FIRST**: Always use a tool to show what you mean.
           
-          1. **PLANNING**: Start with a "Lesson Plan" note. Wait for user approval.
+          FLOW:
+          1. **PLAN**: Start with "create_note" for a Lesson Plan.
+          2. **TEACH**: Use "create_slide" for concepts. Speak to the slide.
+          3. **EXPLAIN**: Use "generate_diagram" for structures, "generate_animation" for dynamic processes.
+          4. **CHECK**: Ask if they understand before moving on.
           
-          2. **TEACHING WITH SLIDES**: Once the plan is approved, teach the first topic by creating a SLIDE using "create_slide".
-             - A slide should have a clear title and 3-5 punchy bullet points.
-             - Speak to the slide: "As you can see on this slide..."
-          
-          3. **DEEP DIVE**: After showing a slide, use other tools if needed:
-             - "create_note" for detailed reference material. ALWAYS use rich Markdown (headers, bold, lists, code blocks).
-             - "generate_chart" for QUANTITATIVE data (stats, metrics).
-             - "generate_diagram" for STRUCTURAL concepts (Linked Lists, Trees, Graphs, Flowcharts, Class Diagrams).
-               - ALWAYS use "generate_diagram" for data structures. NEVER use "generate_chart" for them.
-             - "provide_code_correction" for code examples.
-          
-          4. **INTERACTIVE**: Ask questions to verify understanding before moving to the next slide.
-          
-          CRITICAL:
-          - ALWAYS start a new topic with a "create_slide" call.
-          - Keep your verbal explanation synchronized with the visual slide.
-          
-          Adjust your explanation depth based on their experience level (${experience}).
-          `;
+          Adjust depth for ${experience} level.`;
         }
 
         const sessionUpdate = {
@@ -77,20 +88,20 @@ wss.on('connection', (ws) => {
           session: {
             turn_detection: { 
               type: 'server_vad',
-              threshold: 0.5,
+              threshold: 0.6,
               prefix_padding_ms: 300,
-              silence_duration_ms: 400
+              silence_duration_ms: 600
             },
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
             voice: 'alloy',
             instructions: instructions,
             modalities: ["text", "audio"],
-            temperature: 0.8,
+            temperature: 0.6,
             tools: [{
               type: "function",
               name: "post_question",
-              description: "Post a technical interview question or a coding exercise to the candidate's screen with test cases.",
+            description: "Post a technical interview question or a coding exercise to the candidate's screen with test cases.",
               parameters: {
                 type: "object",
                 properties: {
@@ -168,8 +179,24 @@ wss.on('connection', (ws) => {
                       },
                       datasets: {
                         type: "array", 
-                        items: { type: "object" },
-                        description: "Data points."
+                        items: { 
+                          type: "object",
+                          properties: {
+                            label: { type: "string", description: "Label for the dataset." },
+                            data: { 
+                              type: "array", 
+                              items: { type: "number" },
+                              description: "Array of numerical values corresponding to the labels."
+                            },
+                            backgroundColor: { 
+                              type: "array", 
+                              items: { type: "string" },
+                              description: "Optional array of colors for the data points."
+                            }
+                          },
+                          required: ["label", "data"]
+                        },
+                        description: "Data points. MUST include at least one dataset."
                       }
                     },
                     required: ["labels", "datasets"]
@@ -225,6 +252,19 @@ wss.on('connection', (ws) => {
                 },
                 required: ["title", "bulletPoints"]
               }
+            }, {
+              type: "function",
+              name: "generate_animation",
+              description: "Generate a video animation using Manim (Python) for explaining DYNAMIC concepts (e.g., how a Linked List insertion works, Binary Search visualization, Physics concepts).",
+              parameters: {
+                type: "object",
+                properties: {
+                  code: { type: "string", description: "The Python code for the Manim Scene. Must define a class inheriting from Scene (e.g. class MyScene(Scene):). The code should construct the animation." },
+                  title: { type: "string", description: "Title of the animation." },
+                  description: { type: "string", description: "Brief description of what the animation shows." }
+                },
+                required: ["code", "title"]
+              }
             }]
           },
         };
@@ -275,7 +315,7 @@ wss.on('connection', (ws) => {
     // Wait for client to send init_session before initializing OpenAI session
   });
 
-  openAIWs.on('message', (data) => {
+  openAIWs.on('message', async (data) => {
     try {
         const response = JSON.parse(data.toString());
         
@@ -309,7 +349,8 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify({
                     type: 'execution_output',
                     output: args.output,
-                    status: args.status,
+                  status: args.status,
+                    language: args.language,
                     id: args.id
                 }));
             } else if (response.name === 'generate_chart') {
@@ -340,6 +381,25 @@ wss.on('connection', (ws) => {
                     title: args.title,
                     bulletPoints: args.bulletPoints
                 }));
+            } else if (response.name === 'generate_animation') {
+                // Notify client that generation started (optional, or just wait)
+                console.log('Generating animation...');
+                
+                try {
+                    const videoUrl = await manimService.generateVideo(args.code, args.title);
+                    const fullUrl = `http://localhost:8080${videoUrl}`;
+                    
+                    ws.send(JSON.stringify({
+                        type: 'animation',
+                        url: fullUrl,
+                        title: args.title,
+                        description: args.description,
+                        code: args.code
+                    }));
+                } catch (error) {
+                    console.error('Animation generation failed:', error);
+                    // Optionally send error to client
+                }
             }
             
             // Acknowledge the tool call (required for the model to continue)
@@ -480,4 +540,3 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log('WebSocket server started on port 8080');

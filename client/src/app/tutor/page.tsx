@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import VoiceAgent from "@/components/VoiceAgent";
 import CodeEditor from "@/components/CodeEditor";
 import ChartVisualizer from "@/components/ChartVisualizer";
-import { NoteCard, VisualCard, CodeCard, SlideCard } from "@/components/LearningCards";
+import { NoteCard, VisualCard, CodeCard, SlideCard, VideoCard } from "@/components/LearningCards";
 import { useVoiceAgent } from "@/hooks/useVoiceAgent";
 
 export default function TutorPage() {
@@ -257,6 +257,15 @@ export default function TutorPage() {
                                         key={item.id}
                                         title={item.title}
                                         bulletPoints={item.bulletPoints}
+                                    />
+                                );
+                            } else if (item.type === 'animation') {
+                                return (
+                                    <VideoCard
+                                        key={item.id}
+                                        url={item.url}
+                                        title={item.title}
+                                        description={item.description}
                                     />
                                 );
                             }

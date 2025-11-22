@@ -23,6 +23,7 @@ interface CodeEditorProps {
 
 const LANGUAGES = [
     { id: 'javascript', name: 'JavaScript' },
+    { id: 'typescript', name: 'TypeScript' },
     { id: 'python', name: 'Python' },
     { id: 'java', name: 'Java' },
     { id: 'cpp', name: 'C++' },

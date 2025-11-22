@@ -199,3 +199,43 @@ export const SlideCard: React.FC<SlideCardProps> = ({ title, bulletPoints }) => 
         </div>
     );
 };
+
+export interface VideoCardProps {
+    url: string;
+    title: string;
+    description?: string;
+}
+
+export const VideoCard: React.FC<VideoCardProps> = ({ url, title, description }) => {
+    return (
+        <div className="bg-[#161b22] rounded-xl border border-gray-800 p-6 shadow-lg mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span className="p-1.5 bg-red-500/10 rounded-md text-red-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                    </span>
+                    {title}
+                </h3>
+                <span className="px-2 py-0.5 bg-red-500/10 text-red-400 text-xs font-medium rounded-full border border-red-500/20 uppercase">
+                    Animation
+                </span>
+            </div>
+            <div className="w-full bg-black/40 rounded-lg overflow-hidden border border-gray-800/50">
+                <video
+                    src={url}
+                    controls
+                    autoPlay
+                    loop
+                    className="w-full"
+                >
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            {description && (
+                <div className="mt-4 text-sm text-gray-400 bg-gray-800/30 p-3 rounded-lg border border-gray-800/50">
+                    {description}
+                </div>
+            )}
+        </div>
+    );
+};

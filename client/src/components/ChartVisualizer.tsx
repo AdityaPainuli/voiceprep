@@ -74,6 +74,10 @@ const ChartVisualizer: React.FC<ChartVisualizerProps> = ({ type, data, title, de
     };
 
     const renderChart = () => {
+        if (!data || !data.datasets || !Array.isArray(data.datasets)) {
+            return <div className="text-red-400 p-4">Invalid chart data: Missing datasets</div>;
+        }
+
         switch (type) {
             case 'bar':
                 return <Bar data={data} options={options} />;
