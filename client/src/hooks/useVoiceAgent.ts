@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { floatTo16BitPCM, base64ToFloat32Array } from '../utils/audio';
 
+export type LearningItem = 
+  | { type: 'note'; id: string; title: string; content: string; tags?: string[] }
+  | { type: 'visual'; id: string; chartType: 'bar' | 'line' | 'pie' | 'doughnut' | 'radar' | 'mermaid'; data: any; title: string; description?: string }
+  | { type: 'code'; id: string; code: string; language: string; explanation?: string }
+  | { type: 'slide'; id: string; title: string; bulletPoints: string[] };
+
 export const useVoiceAgent = () => {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [status, setStatus] = useState('Disconnected');
@@ -16,9 +22,25 @@ export const useVoiceAgent = () => {
     isSubmittingRef.current = isSubmitting;
   }, [isSubmitting]);
 
+  // New State for Learning Stream
+  const [learningStream, setLearningStream] = useState<LearningItem[]>([]);
+  
+  // Keep track of the latest visualization for backward compatibility or focused view if needed
+  const [visualization, setVisualization] = useState<{
+    type: 'bar' | 'line' | 'pie' | 'doughnut' | 'radar' | 'mermaid';
+    data: any;
+    title?: string;
+    description?: string;
+  } | null>(null);
+
+  // Per-card execution state
+  const [executionStates, setExecutionStates] = useState<Record<string, { isRunning: boolean; output: string | null; isError: boolean }>>({});
+
+  // Global state for main editor (interview mode)
   const [output, setOutput] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  
   const [isMuted, setIsMuted] = useState(false);
   const isMutedRef = useRef(false);
 
@@ -29,16 +51,7 @@ export const useVoiceAgent = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef<number>(0);
 
-  // ... existing code ...
-
-
-  useEffect(() => {
-    return () => {
-      stopSession();
-    };
-  }, []);
-
-  const startSession = useCallback(async () => {
+  const startSession = useCallback(async (mode: 'interview' | 'tutor', config?: any) => {
     try {
       setStatus('Connecting...');
       const ws = new WebSocket('ws://localhost:8080');
@@ -48,6 +61,13 @@ export const useVoiceAgent = () => {
         setStatus('Connected');
         setIsSessionActive(true);
         initAudio();
+        
+        // Initialize session with mode and config
+        ws.send(JSON.stringify({
+          type: 'init_session',
+          mode,
+          config
+        }));
       };
 
       ws.onmessage = async (event) => {
@@ -88,12 +108,96 @@ export const useVoiceAgent = () => {
         if (data.type === 'correction') {
           setCorrectedCode(data.correctedCode);
           setIsSubmitting(false);
+          
+          // Add to learning stream as a Code Card
+          setLearningStream(prev => [...prev, {
+            type: 'code',
+            id: Date.now().toString(),
+            code: data.correctedCode,
+            language: data.language || 'javascript',
+            explanation: data.explanation
+          }]);
         }
 
         if (data.type === 'execution_output') {
-          setOutput(data.output);
-          setIsError(data.status === 'error');
-          setIsRunning(false);
+          if (data.id) {
+            // Update specific card state
+            setExecutionStates(prev => ({
+                ...prev,
+                [data.id]: {
+                    isRunning: false,
+                    output: data.output,
+                    isError: data.status === 'error'
+                }
+            }));
+          } else {
+            // Global state (interview mode)
+            setOutput(data.output);
+            setIsError(data.status === 'error');
+            setIsRunning(false);
+          }
+        }
+
+        if (data.type === 'chart') {
+          const newVisual = {
+            type: data.chartType,
+            data: data.data,
+            title: data.title,
+            description: data.description
+          };
+          
+          setVisualization(newVisual);
+          
+          // Add to learning stream as a Visual Card
+          setLearningStream(prev => [...prev, {
+            type: 'visual',
+            id: Date.now().toString(),
+            chartType: data.chartType,
+            data: data.data,
+            title: data.title,
+            description: data.description
+          }]);
+        }
+
+        if (data.type === 'diagram') {
+            const newVisual = {
+              type: 'mermaid' as const,
+              data: data.code,
+              title: data.title,
+              description: data.description
+            };
+            
+            setVisualization(newVisual);
+            
+            // Add to learning stream as a Visual Card
+            setLearningStream(prev => [...prev, {
+              type: 'visual',
+              id: Date.now().toString(),
+              chartType: 'mermaid',
+              data: data.code, // Pass code string directly as data
+              title: data.title,
+              description: data.description
+            }]);
+        }
+
+        if (data.type === 'note') {
+            // Add to learning stream as a Note Card
+            setLearningStream(prev => [...prev, {
+                type: 'note',
+                id: Date.now().toString(),
+                title: data.title,
+                content: data.content,
+                tags: data.tags
+            }]);
+        }
+
+        if (data.type === 'slide') {
+            setLearningStream(prev => [...prev, {
+                type: 'slide',
+                id: Date.now().toString(),
+                title: data.title,
+                bulletPoints: data.bulletPoints
+            }]);
         }
       };
 
@@ -129,6 +233,9 @@ export const useVoiceAgent = () => {
     setIsSubmitting(false);
     setIsRunning(false);
     setAgentState('idle');
+    setVisualization(null);
+    setLearningStream([]);
+    setExecutionStates({});
   }, []);
 
   const sendCode = useCallback((code: string) => {
@@ -141,14 +248,23 @@ export const useVoiceAgent = () => {
     }
   }, []);
 
-  const runCode = useCallback((code: string) => {
+  const runCode = useCallback((code: string, id?: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      setIsRunning(true);
-      setOutput(null);
-      setIsError(false);
+      if (id) {
+        setExecutionStates(prev => ({
+            ...prev,
+            [id]: { isRunning: true, output: null, isError: false }
+        }));
+      } else {
+        setIsRunning(true);
+        setOutput(null);
+        setIsError(false);
+      }
+      
       wsRef.current.send(JSON.stringify({
         type: 'run_code',
-        code: code
+        code: code,
+        id: id // Pass ID to server so it can echo it back
       }));
     }
   }, []);
@@ -172,6 +288,21 @@ export const useVoiceAgent = () => {
 
   const clearCorrection = useCallback(() => {
     setCorrectedCode(null);
+  }, []);
+
+  const sendMessage = useCallback((text: string) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+            type: 'text_message',
+            text: text
+        }));
+    }
+  }, []);
+
+  const updateLearningItem = useCallback((id: string, updates: Partial<LearningItem>) => {
+    setLearningStream(prev => prev.map(item => 
+        item.id === id ? { ...item, ...updates } as LearningItem : item
+    ));
   }, []);
 
   const initAudio = async () => {
@@ -250,6 +381,7 @@ export const useVoiceAgent = () => {
     isSubmitting,
     output,
     isRunning,
+    executionStates,
     startSession,
     stopSession,
     sendCode,
@@ -261,6 +393,11 @@ export const useVoiceAgent = () => {
     testCases,
     isSolved,
     nextQuestion,
-    agentState
+    agentState,
+    visualization,
+    setVisualization,
+    learningStream,
+    sendMessage,
+    updateLearningItem
   };
 };

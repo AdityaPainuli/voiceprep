@@ -29,89 +29,250 @@ wss.on('connection', (ws) => {
     },
   });
 
-  const initializeSession = () => {
-    const sessionUpdate = {
-      type: 'session.update',
-      session: {
-        turn_detection: { 
-          type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 400
-        },
-        input_audio_format: 'pcm16',
-        output_audio_format: 'pcm16',
-        voice: 'alloy',
-        instructions: 'You are a senior software engineer interviewer. Your goal is to conduct a realistic mock interview. Start by greeting the candidate and asking them which programming language they would like to use for the interview. Once they specify a language, use the \"post_question\" tool to send them a technical question (e.g., a coding problem or concept check) suitable for a software engineering role. ALWAYS provide 2-3 test cases with the question using the \"testCases\" parameter. Listen to their response, ask follow-up questions to probe their understanding, and provide constructive feedback on their approach and communication. When the user submits code, analyze it. If the code is incorrect, suboptimal, or could be improved in ANY way (style, performance, readability), you MUST use the \"provide_code_correction\" tool to show the corrected version. Do not just describe the changes verbally; show them using the tool. Explain the changes verbally while the tool displays the diff. CRITICAL: If the user asks for ANY of the following, you MUST use the \"provide_code_correction\" tool: suggestions, improvements, optimizations, refactoring, better code, cleaner code, fixing issues, or any request to modify/enhance their code. NEVER give verbal-only suggestions for code changes. ALWAYS show the improved code using the tool, even if they just ask \"can you suggest improvements?\" or \"how can I optimize this?\". Verbal explanation alone is FORBIDDEN for code changes. You must show the diff. If the code is correct, praise them. IMPORTANT: When the user submits a CORRECT solution, use the \"mark_question_solved\" tool to enable the \"Next Question\" button. Do NOT move to the next question automatically. Wait for the user to click \"Next Question\" (which will send a \"next_question\" event) or explicitly ask for it before posting a new question. If the user asks to run the code (or clicks Run), you MUST simulate the execution and use the \"provide_execution_output\" tool. DO NOT just say the output verbally. You MUST use the tool to display it. If the code is correct, use status=\"success\". If there are errors, use status=\"error\" and provide the EXACT error message and stack trace. Keep the tone professional but encouraging.',
-        modalities: ["text", "audio"],
-        temperature: 0.8,
-        tools: [{
-          type: "function",
-          name: "post_question",
-          description: "Post a technical interview question to the candidate's screen with test cases.",
-          parameters: {
-            type: "object",
-            properties: {
-              question: { type: "string", description: "The text of the question to display." },
-              testCases: { 
-                type: "array", 
-                items: {
+  const initializeSession = (mode: 'interview' | 'tutor', config?: any) => {
+      const runInit = () => {
+        if (openAIWs.readyState !== WebSocket.OPEN) {
+            console.log('OpenAI WebSocket not ready yet, retrying in 100ms...');
+            setTimeout(runInit, 100);
+            return;
+        }
+
+        let instructions = '';
+        
+        if (mode === 'interview') {
+          instructions = 'You are a senior software engineer interviewer. Your goal is to conduct a realistic mock interview. Start by greeting the candidate and asking them which programming language they would like to use for the interview. Once they specify a language, use the "post_question" tool to send them a technical question (e.g., a coding problem or concept check) suitable for a software engineering role. ALWAYS provide 2-3 test cases with the question using the "testCases" parameter. Listen to their response, ask follow-up questions to probe their understanding, and provide constructive feedback on their approach and communication. When the user submits code, analyze it. If the code is incorrect, suboptimal, or could be improved in ANY way (style, performance, readability), you MUST use the "provide_code_correction" tool to show the corrected version. Do not just describe the changes verbally; show them using the tool. Explain the changes verbally while the tool displays the diff. CRITICAL: If the user asks for ANY of the following, you MUST use the "provide_code_correction" tool: suggestions, improvements, optimizations, refactoring, better code, cleaner code, fixing issues, or any request to modify/enhance their code. NEVER give verbal-only suggestions for code changes. ALWAYS show the improved code using the tool, even if they just ask "can you suggest improvements?" or "how can I optimize this?". Verbal explanation alone is FORBIDDEN for code changes. You must show the diff. If the code is correct, praise them. IMPORTANT: When the user submits a CORRECT solution, use the "mark_question_solved" tool to enable the "Next Question" button. Do NOT move to the next question automatically. Wait for the user to click "Next Question" (which will send a "next_question" event) or explicitly ask for it before posting a new question. If the user asks to run the code (or clicks Run), you MUST simulate the execution and use the "provide_execution_output" tool. DO NOT just say the output verbally. You MUST use the tool to display it. If the code is correct, use status="success". If there are errors, use status="error" and provide the EXACT error message and stack trace. Keep the tone professional but encouraging.';
+        } else if (mode === 'tutor') {
+          const { topic, language, experience } = config;
+          instructions = `You are a friendly and collaborative AI Tutor specializing in ${topic}. The user is a ${experience} in ${language}. Your goal is to teach them about ${topic} in ${language} by building a visual study guide together.
+          
+          Start by introducing yourself as their tutor for ${topic} and ask them what specific aspect they'd like to start with or if they want a general overview.
+          
+          TEACHING STYLE: "VISUAL PRESENTER"
+          
+          1. **PLANNING**: Start with a "Lesson Plan" note. Wait for user approval.
+          
+          2. **TEACHING WITH SLIDES**: Once the plan is approved, teach the first topic by creating a SLIDE using "create_slide".
+             - A slide should have a clear title and 3-5 punchy bullet points.
+             - Speak to the slide: "As you can see on this slide..."
+          
+          3. **DEEP DIVE**: After showing a slide, use other tools if needed:
+             - "create_note" for detailed reference material. ALWAYS use rich Markdown (headers, bold, lists, code blocks).
+             - "generate_chart" for QUANTITATIVE data (stats, metrics).
+             - "generate_diagram" for STRUCTURAL concepts (Linked Lists, Trees, Graphs, Flowcharts, Class Diagrams).
+               - ALWAYS use "generate_diagram" for data structures. NEVER use "generate_chart" for them.
+             - "provide_code_correction" for code examples.
+          
+          4. **INTERACTIVE**: Ask questions to verify understanding before moving to the next slide.
+          
+          CRITICAL:
+          - ALWAYS start a new topic with a "create_slide" call.
+          - Keep your verbal explanation synchronized with the visual slide.
+          
+          Adjust your explanation depth based on their experience level (${experience}).
+          `;
+        }
+
+        const sessionUpdate = {
+          type: 'session.update',
+          session: {
+            turn_detection: { 
+              type: 'server_vad',
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 400
+            },
+            input_audio_format: 'pcm16',
+            output_audio_format: 'pcm16',
+            voice: 'alloy',
+            instructions: instructions,
+            modalities: ["text", "audio"],
+            temperature: 0.8,
+            tools: [{
+              type: "function",
+              name: "post_question",
+              description: "Post a technical interview question or a coding exercise to the candidate's screen with test cases.",
+              parameters: {
+                type: "object",
+                properties: {
+                  question: { type: "string", description: "The text of the question or exercise to display." },
+                  testCases: { 
+                    type: "array", 
+                    items: {
+                        type: "object",
+                        properties: {
+                            input: { type: "string" },
+                            expectedOutput: { type: "string" }
+                        }
+                    },
+                    description: "Array of test cases (input/output pairs)."
+                  }
+                },
+                required: ["question", "testCases"]
+              }
+            }, {
+              type: "function",
+              name: "mark_question_solved",
+              description: "Mark the current question as solved when the candidate provides a correct solution.",
+              parameters: {
+                type: "object",
+                properties: {
+                  feedback: { type: "string", description: "Brief feedback on the solution." }
+                },
+                required: ["feedback"]
+              }
+            }, {
+              type: "function",
+              name: "provide_code_correction",
+              description: "Provide a corrected version of the candidate's code, or show a code example.",
+              parameters: {
+                type: "object",
+                properties: {
+                  correctedCode: { type: "string", description: "The full code snippet to display." },
+                  language: { type: "string", description: "The programming language of the code (e.g., 'python', 'javascript', 'typescript', 'java', 'cpp', 'go', 'rust')." },
+                  explanation: { type: "string", description: "Brief explanation of the code." }
+                },
+                required: ["correctedCode", "language", "explanation"]
+              }
+            }, {
+              type: "function",
+              name: "provide_execution_output",
+              description: "Provide the output of the simulated code execution.",
+              parameters: {
+                type: "object",
+                properties: {
+                  output: { type: "string", description: "The console output of the code execution." },
+                  status: { type: "string", enum: ["success", "error"], description: "The execution status." },
+                  id: { type: "string", description: "The internal ID provided in the user's request (if any)." }
+                },
+                required: ["output", "status"]
+              }
+            }, {
+              type: "function",
+              name: "generate_chart",
+              description: "Generate a standard chart for QUANTITATIVE/NUMERICAL data (e.g., performance metrics, market share, comparisons).",
+              parameters: {
+                type: "object",
+                properties: {
+                  type: { 
+                    type: "string", 
+                    enum: ["bar", "line", "pie", "doughnut", "radar"],
+                    description: "The type of chart to generate." 
+                  },
+                  data: {
                     type: "object",
                     properties: {
-                        input: { type: "string" },
-                        expectedOutput: { type: "string" }
-                    }
+                      labels: { 
+                        type: "array", 
+                        items: { type: "string" },
+                        description: "Labels for the X-axis or categories."
+                      },
+                      datasets: {
+                        type: "array", 
+                        items: { type: "object" },
+                        description: "Data points."
+                      }
+                    },
+                    required: ["labels", "datasets"]
+                  },
+                  title: { type: "string", description: "Title of the chart." },
+                  description: { type: "string", description: "Brief description of what the chart shows." }
                 },
-                description: "Array of test cases (input/output pairs)."
+                required: ["type", "data", "title"]
               }
-            },
-            required: ["question", "testCases"]
-          }
-        }, {
-          type: "function",
-          name: "mark_question_solved",
-          description: "Mark the current question as solved when the candidate provides a correct solution.",
-          parameters: {
-            type: "object",
-            properties: {
-              feedback: { type: "string", description: "Brief feedback on the solution." }
-            },
-            required: ["feedback"]
-          }
-        }, {
-          type: "function",
-          name: "provide_code_correction",
-          description: "Provide a corrected version of the candidate's code with fixes or improvements.",
-          parameters: {
-            type: "object",
-            properties: {
-              correctedCode: { type: "string", description: "The full corrected code snippet." },
-              explanation: { type: "string", description: "Brief explanation of what was fixed." }
-            },
-            required: ["correctedCode", "explanation"]
-          }
-        }, {
-          type: "function",
-          name: "provide_execution_output",
-          description: "Provide the output of the simulated code execution.",
-          parameters: {
-            type: "object",
-            properties: {
-              output: { type: "string", description: "The console output of the code execution." },
-              status: { type: "string", enum: ["success", "error"], description: "The execution status." }
-            },
-            required: ["output", "status"]
-          }
-        }]
-      },
-    };
-    console.log('Sending session update:', JSON.stringify(sessionUpdate));
-    openAIWs.send(JSON.stringify(sessionUpdate));
+            }, {
+              type: "function",
+              name: "generate_diagram",
+              description: "Generate a structural diagram using Mermaid.js for CONCEPTS, FLOWS, and DATA STRUCTURES (e.g., Linked Lists, Trees, Graphs, Class Diagrams, Flowcharts).",
+              parameters: {
+                type: "object",
+                properties: {
+                  code: { type: "string", description: "The Mermaid.js syntax string. Do not include markdown backticks." },
+                  title: { type: "string", description: "Title of the diagram." },
+                  description: { type: "string", description: "Brief description of what the diagram shows." }
+                },
+                required: ["code", "title"]
+              }
+            }, {
+              type: "function",
+              name: "create_note",
+              description: "Create a structured note card for the user's notebook.",
+              parameters: {
+                type: "object",
+                properties: {
+                  title: { type: "string", description: "Title of the note." },
+                  content: { type: "string", description: "The content of the note. MUST use rich Markdown formatting: Use Headers (##), Bold (**text**), Lists (- item), and Code Blocks (```language) to organize information clearly." },
+                  tags: { 
+                    type: "array", 
+                    items: { type: "string" },
+                    description: "Optional tags for the note (e.g., 'Concept', 'Tip', 'Warning')."
+                  }
+                },
+                required: ["title", "content"]
+              }
+            }, {
+              type: "function",
+              name: "create_slide",
+              description: "Create a presentation slide for a specific topic.",
+              parameters: {
+                type: "object",
+                properties: {
+                  title: { type: "string", description: "Title of the slide (the topic)." },
+                  bulletPoints: { 
+                    type: "array", 
+                    items: { type: "string" },
+                    description: "List of 3-5 key points to display on the slide."
+                  }
+                },
+                required: ["title", "bulletPoints"]
+              }
+            }]
+          },
+        };
+        console.log('Sending session update:', JSON.stringify(sessionUpdate));
+        try {
+            openAIWs.send(JSON.stringify(sessionUpdate));
+        } catch (e) {
+            console.error('Failed to send session update, retrying in 100ms:', e);
+            setTimeout(runInit, 100);
+            return;
+        }
+
+        // For Tutor mode, trigger an initial response to greet the user
+        if (mode === 'tutor') {
+            // Inject context as a user message to ensure the model understands the scenario
+            const contextMessage = {
+                type: 'conversation.item.create',
+                item: {
+                    type: 'message',
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'input_text',
+                            text: `I want to learn ${config.topic} in ${config.language}. I am a ${config.experience} level developer. Please act as my tutor. 
+                            
+                            CRITICAL INSTRUCTION: Start IMMEDIATELY by using the "create_note" tool to generate a "Lesson Plan" for this topic. 
+                            The note should outline what we will cover. 
+                            After creating the note, introduce yourself and ask if I'm ready to start with the first item.`
+                        }
+                    ]
+                }
+            };
+            console.log('Injecting tutor context:', JSON.stringify(contextMessage));
+            try {
+                openAIWs.send(JSON.stringify(contextMessage));
+                openAIWs.send(JSON.stringify({ type: 'response.create' }));
+            } catch (e) {
+                console.error('Failed to send context message:', e);
+            }
+        }
+      };
+
+      runInit();
   };
 
   openAIWs.on('open', () => {
     console.log('Connected to OpenAI');
-    initializeSession();
+    // Wait for client to send init_session before initializing OpenAI session
   });
 
   openAIWs.on('message', (data) => {
@@ -141,13 +302,43 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify({
                     type: 'correction',
                     correctedCode: args.correctedCode,
+                    language: args.language,
                     explanation: args.explanation
                 }));
             } else if (response.name === 'provide_execution_output') {
                 ws.send(JSON.stringify({
                     type: 'execution_output',
                     output: args.output,
-                    status: args.status
+                    status: args.status,
+                    id: args.id
+                }));
+            } else if (response.name === 'generate_chart') {
+                ws.send(JSON.stringify({
+                    type: 'chart',
+                    chartType: args.type,
+                    data: args.data,
+                    title: args.title,
+                    description: args.description
+                }));
+            } else if (response.name === 'generate_diagram') {
+                ws.send(JSON.stringify({
+                    type: 'diagram',
+                    code: args.code,
+                    title: args.title,
+                    description: args.description
+                }));
+            } else if (response.name === 'create_note') {
+                ws.send(JSON.stringify({
+                    type: 'note',
+                    title: args.title,
+                    content: args.content,
+                    tags: args.tags
+                }));
+            } else if (response.name === 'create_slide') {
+                ws.send(JSON.stringify({
+                    type: 'slide',
+                    title: args.title,
+                    bulletPoints: args.bulletPoints
                 }));
             }
             
@@ -204,7 +395,9 @@ wss.on('connection', (ws) => {
       const data = JSON.parse(message.toString());
       console.log('Received message from client:', data.type);
       
-      if (data.type === 'audio' && openAIWs.readyState === WebSocket.OPEN) {
+      if (data.type === 'init_session') {
+        initializeSession(data.mode, data.config);
+      } else if (data.type === 'audio' && openAIWs.readyState === WebSocket.OPEN) {
         const audioAppend = {
             type: 'input_audio_buffer.append',
             audio: data.payload
@@ -235,7 +428,7 @@ wss.on('connection', (ws) => {
                 content: [
                     {
                         type: 'input_text',
-                        text: `I want to run this code. Please simulate the execution. If there are errors (syntax, runtime, etc.), provide the EXACT error message and stack trace in the output and set status to 'error'. If it runs successfully, show the output and set status to 'success'.\n\n${data.code}`
+                        text: `I want to run this code. Please simulate the execution. If there are errors (syntax, runtime, etc.), provide the EXACT error message and stack trace in the output and set status to 'error'. If it runs successfully, show the output and set status to 'success'.\n\n${data.code}\n\n(Internal ID: ${data.id})`
                     }
                 ]
             }
@@ -257,6 +450,22 @@ wss.on('connection', (ws) => {
             }
         };
         openAIWs.send(JSON.stringify(nextQuestionRequest));
+        openAIWs.send(JSON.stringify({ type: 'response.create' }));
+      } else if (data.type === 'text_message' && openAIWs.readyState === WebSocket.OPEN) {
+        const textMessage = {
+            type: 'conversation.item.create',
+            item: {
+                type: 'message',
+                role: 'user',
+                content: [
+                    {
+                        type: 'input_text',
+                        text: data.text
+                    }
+                ]
+            }
+        };
+        openAIWs.send(JSON.stringify(textMessage));
         openAIWs.send(JSON.stringify({ type: 'response.create' }));
       }
 

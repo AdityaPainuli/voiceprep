@@ -10,6 +10,8 @@ interface VoiceAgentProps {
     isMuted?: boolean;
     toggleMute?: () => void;
     agentState?: 'idle' | 'listening' | 'thinking' | 'speaking';
+    title?: string;
+    buttonText?: string;
 }
 
 const VoiceAgent: React.FC<VoiceAgentProps> = ({
@@ -19,7 +21,9 @@ const VoiceAgent: React.FC<VoiceAgentProps> = ({
     stopSession,
     isMuted = false,
     toggleMute,
-    agentState = 'idle'
+    agentState = 'idle',
+    title = "Interviewer AI",
+    buttonText = "Start Interview"
 }) => {
     return (
         <div className="h-full flex flex-col bg-gray-900 text-white p-6 relative overflow-hidden">
@@ -37,7 +41,7 @@ const VoiceAgent: React.FC<VoiceAgentProps> = ({
                             <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 10.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
                         </svg>
                     </div>
-                    <h1 className="font-bold text-xl tracking-tight">Interviewer AI</h1>
+                    <h1 className="font-bold text-xl tracking-tight">{title}</h1>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-xs font-medium border ${status === 'Connected'
                     ? 'bg-green-500/10 border-green-500/20 text-green-400'
@@ -87,7 +91,7 @@ const VoiceAgent: React.FC<VoiceAgentProps> = ({
                                     : agentState === 'speaking'
                                         ? "Speaking..."
                                         : "Listening..."
-                        : "Ready to start interview"}
+                        : "Ready to start"}
                 </p>
             </div>
 
@@ -126,7 +130,7 @@ const VoiceAgent: React.FC<VoiceAgentProps> = ({
                         : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-blue-500/30'
                         }`}
                 >
-                    {isSessionActive ? 'End Interview' : 'Start Interview'}
+                    {isSessionActive ? 'End Session' : buttonText}
                 </button>
             </div>
         </div>
