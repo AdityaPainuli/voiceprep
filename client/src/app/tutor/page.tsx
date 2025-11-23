@@ -1,45 +1,64 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from 'react';
+import { useVoiceAgent } from '@/hooks/useVoiceAgent';
+import { VisualCard, NoteCard, CodeCard, SlideCard, VideoCard } from '@/components/LearningCards';
 import VoiceAgent from "@/components/VoiceAgent";
 import CodeEditor from "@/components/CodeEditor";
 import ChartVisualizer from "@/components/ChartVisualizer";
-import { NoteCard, VisualCard, CodeCard, SlideCard, VideoCard } from "@/components/LearningCards";
-import { useVoiceAgent } from "@/hooks/useVoiceAgent";
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function TutorPage() {
+    const { token, loading } = useAuth();
+    const router = useRouter();
     const [setupComplete, setSetupComplete] = useState(false);
+
+    useEffect(() => {
+        if (!loading && !token) {
+            router.push('/login');
+        }
+    }, [token, loading, router]);
+
+    if (loading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            </div>
+        );
+    }
+
+    if (!token) return null;
     const [config, setConfig] = useState({
         topic: "",
         language: "javascript",
         experience: "beginner"
     });
-
     const [code, setCode] = useState("// Code examples will appear here...");
 
     const {
-        isSessionActive,
         status,
+        isSessionActive,
+        learningStream,
+        startSession,
+        stopSession,
+        isMuted,
+        toggleMute,
         correctedCode,
         isSubmitting,
         output,
         isRunning,
         executionStates,
-        startSession,
-        stopSession,
         sendCode,
         runCode,
         clearCorrection,
-        isMuted,
-        toggleMute,
         isError,
         agentState,
         visualization,
         setVisualization,
-        learningStream,
         sendMessage,
         updateLearningItem
-    } = useVoiceAgent();
+    } = useVoiceAgent(token || '');
 
     // Auto-scroll to bottom when learningStream changes
     const streamEndRef = useRef<HTMLDivElement>(null);

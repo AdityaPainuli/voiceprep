@@ -5,8 +5,30 @@ import CodeEditor from "@/components/CodeEditor";
 import { useVoiceAgent } from "@/hooks/useVoiceAgent";
 import { useState, useEffect } from "react";
 
+import { useAuth } from '@/contexts/AuthContext';
+
+import { useRouter } from 'next/navigation';
+
 export default function InterviewPage() {
+    const { token, loading } = useAuth();
+    const router = useRouter();
     const [code, setCode] = useState("// Write your solution here...");
+
+    useEffect(() => {
+        if (!loading && !token) {
+            router.push('/login');
+        }
+    }, [token, loading, router]);
+
+    if (loading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    if (!token) return null;
     const [language, setLanguage] = useState("javascript");
     const {
         isSessionActive,
@@ -16,6 +38,7 @@ export default function InterviewPage() {
         isSubmitting,
         output,
         isRunning,
+        executionStates,
         startSession,
         stopSession,
         sendCode,
@@ -28,7 +51,7 @@ export default function InterviewPage() {
         isSolved,
         nextQuestion,
         agentState
-    } = useVoiceAgent();
+    } = useVoiceAgent(token || '');
 
     const handleSubmit = () => {
         sendCode(code);

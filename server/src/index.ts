@@ -1,10 +1,15 @@
 import Fastify from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import WebSocket from 'ws';
 import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
 import path from 'path';
 import fastifyStatic from '@fastify/static';
 import { ManimService } from './services/ManimService';
+import { AuthService } from './services/AuthService';
+import { UsageService } from './services/UsageService';
+import jwt from 'jsonwebtoken';
+import cors from '@fastify/cors';
 
 dotenv.config();
 
@@ -26,6 +31,9 @@ fastify.register(fastifyStatic, {
 });
 
 const manimService = new ManimService();
+const authService = new AuthService();
+const usageService = new UsageService();
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-this';
 
 const startServer = async () => {
   try {
@@ -39,11 +47,120 @@ const startServer = async () => {
 
 startServer();
 
+// Enable CORS
+fastify.register(cors, {
+  origin: true // Allow all origins for now (dev)
+});
+
+// Auth Routes
+fastify.post('/api/register', async (request, reply) => {
+  const { email, password } = request.body as any;
+  try {
+    const result = await authService.register(email, password);
+    return result;
+  } catch (err: any) {
+    return reply.code(400).send({ error: err.message });
+  }
+});
+
+fastify.post('/api/login', async (request, reply) => {
+  const { email, password } = request.body as any;
+  try {
+    const result = await authService.login(email, password);
+    return result;
+  } catch (err: any) {
+    return reply.code(401).send({ error: err.message });
+  }
+});
+
+fastify.get('/api/me', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) throw new Error('No token');
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const user = await authService.getUser(decoded.userId);
+    return user;
+  } catch (err) {
+    return reply.code(401).send({ error: 'Unauthorized' });
+  }
+});
+
+fastify.post('/api/upgrade', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) throw new Error('No token');
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    const { plan } = request.body as any;
+    if (!['BASIC', 'PRO', 'UNLIMITED'].includes(plan)) {
+      return reply.code(400).send({ error: 'Invalid plan' });
+    }
+
+    // In a real app, we would process payment here.
+    // For now, we just update the user's plan.
+    
+    const prisma = new PrismaClient(); // Should probably inject or reuse, but this is quick
+    const user = await prisma.user.update({
+      where: { id: decoded.userId },
+      data: { plan }
+    });
+
+    // Generate new token with updated plan
+    const newToken = jwt.sign({ userId: user.id, email: user.email, plan: user.plan }, JWT_SECRET, { expiresIn: '7d' });
+
+    return { user: { id: user.id, email: user.email, plan: user.plan }, token: newToken };
+  } catch (err: any) {
+    return reply.code(400).send({ error: err.message });
+  }
+});
+
+// ... (keep static file serving)
+
+// ... (keep startServer)
+
 const wss = new WebSocketServer({ server: fastify.server });
 
-wss.on('connection', (ws) => {
+wss.on('connection', async (ws, req) => {
+  // Extract token from query string: /?token=...
+  const url = new URL(req.url || '', `http://${req.headers.host}`);
+  const token = url.searchParams.get('token');
+
+  let user: any = null;
+  const sessionStartTime = Date.now();
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      user = await authService.getUser(decoded.userId);
+      
+      // Check if user has minutes left
+      try {
+        await usageService.checkLimit(user.id, 'realtimeMinutes', 1); // Check if at least 1 min available
+      } catch (e: any) {
+        console.log('User limit reached:', e.message);
+        ws.close(1008, e.message);
+        return;
+      }
+
+      console.log(`User connected: ${user.email} (${user.plan})`);
+    } catch (err) {
+      console.log('Invalid token for WS connection');
+      ws.close(1008, 'Invalid token');
+      return;
+    }
+  } else {
+    console.log('No token provided for WS connection');
+    ws.close(1008, 'Authentication required');
+    return;
+  }
+
   console.log('Client connected');
 
+  // ... (rest of the WS logic, now with access to `user` object)
+  // Pass `user` to initializeSession or store it in a map if needed
+  
   const openAIWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01', {
       headers: {
       Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -52,6 +169,7 @@ wss.on('connection', (ws) => {
   });
 
   const initializeSession = (mode: 'interview' | 'tutor', config?: any) => {
+      // ... (keep existing logic)
       const runInit = () => {
         if (openAIWs.readyState !== WebSocket.OPEN) {
             console.log('OpenAI WebSocket not ready yet, retrying in 100ms...');
@@ -327,6 +445,37 @@ wss.on('connection', (ws) => {
             console.log('Tool called:', response);
             const args = JSON.parse(response.arguments);
             
+            // Check limits before executing tools
+            try {
+                if (response.name === 'generate_chart' || response.name === 'generate_diagram') {
+                    await usageService.checkLimit(user.id, 'diagrams');
+                    await usageService.incrementUsage(user.id, 'diagrams');
+                } else if (response.name === 'generate_animation') {
+                    await usageService.checkLimit(user.id, 'videos');
+                    await usageService.incrementUsage(user.id, 'videos');
+                }
+            } catch (e: any) {
+                console.error('Usage limit reached:', e.message);
+                // Send error to client via WS
+                ws.send(JSON.stringify({
+                    type: 'error',
+                    message: e.message
+                }));
+                // Fail the tool call gracefully? Or just don't execute?
+                // For now, we'll just return an error output to the model
+                 const toolOutput = {
+                    type: 'conversation.item.create',
+                    item: {
+                        type: 'function_call_output',
+                        call_id: response.call_id,
+                        output: JSON.stringify({ error: e.message })
+                    }
+                };
+                openAIWs.send(JSON.stringify(toolOutput));
+                openAIWs.send(JSON.stringify({ type: 'response.create' }));
+                return;
+            }
+
             if (response.name === 'post_question') {
                 ws.send(JSON.stringify({
                     type: 'question',
@@ -534,9 +683,13 @@ wss.on('connection', (ws) => {
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', async () => {
     console.log('Client disconnected');
     openAIWs.close();
+    
+    // Track session duration
+    if (user) {
+        await usageService.trackSessionDuration(user.id, sessionStartTime);
+    }
   });
 });
-

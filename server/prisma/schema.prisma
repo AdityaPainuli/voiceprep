@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String   // Hashed
+  plan          String   @default("TRIAL") // 'TRIAL', 'BASIC', 'PRO', 'UNLIMITED'
+  createdAt     DateTime @default(now())
+  
+  // Usage Counters (Reset monthly or based on billing cycle)
+  realtimeMinutesUsed Int @default(0)
+  diagramsUsed        Int @default(0)
+  videosUsed          Int @default(0)
+  tokensUsed          Int @default(0)
+  
+  // Credits (Add-ons)
+  creditBalance       Float @default(0.0)
+}

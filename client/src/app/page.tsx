@@ -1,14 +1,36 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
+  const { user, loading } = useAuth();
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 p-24">
       <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex flex-col gap-12">
         <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600 pb-2">
           AI Developer Assistant
         </h1>
+
+        {!loading && !user && (
+          <div className="flex gap-4">
+            <Link href="/login" className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors">
+              Login
+            </Link>
+            <Link href="/register" className="px-6 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-medium transition-colors">
+              Register
+            </Link>
+          </div>
+        )}
+
+        {!loading && user && (
+          <div className="flex gap-4 items-center">
+            <span className="text-gray-400">Welcome, {user.email}</span>
+            <Link href="/dashboard" className="px-6 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors">
+              Go to Dashboard
+            </Link>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
           {/* Interview Prep Card */}

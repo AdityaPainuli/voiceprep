@@ -8,7 +8,7 @@ export type LearningItem =
   | { type: 'slide'; id: string; title: string; bulletPoints: string[] }
   | { type: 'animation'; id: string; url: string; title: string; description?: string; code?: string };
 
-export const useVoiceAgent = () => {
+export const useVoiceAgent = (token: string) => {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [status, setStatus] = useState('Disconnected');
   const [question, setQuestion] = useState<string | null>(null);
@@ -48,14 +48,20 @@ export const useVoiceAgent = () => {
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
+
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef<number>(0);
 
-  const startSession = useCallback(async (mode: 'interview' | 'tutor', config?: any) => {
+  const startSession = useCallback((mode: 'interview' | 'tutor', config?: any) => {
+    if (!token) {
+        console.error('No token provided');
+        return;
+    }
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+
     try {
-      setStatus('Connecting...');
-      const ws = new WebSocket('ws://localhost:8080');
+      const ws = new WebSocket(`ws://localhost:8080?token=${token}`);
       wsRef.current = ws;
 
       ws.onopen = () => {
