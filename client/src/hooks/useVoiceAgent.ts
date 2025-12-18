@@ -1,22 +1,52 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { floatTo16BitPCM, base64ToFloat32Array } from '../utils/audio';
+import { useEffect, useRef, useState, useCallback } from "react";
+import { floatTo16BitPCM, base64ToFloat32Array } from "../utils/audio";
 
-export type LearningItem = 
-  | { type: 'note'; id: string; title: string; content: string; tags?: string[] }
-  | { type: 'visual'; id: string; chartType: 'bar' | 'line' | 'pie' | 'doughnut' | 'radar' | 'mermaid'; data: any; title: string; description?: string }
-  | { type: 'code'; id: string; code: string; language: string; explanation?: string }
-  | { type: 'slide'; id: string; title: string; bulletPoints: string[] }
-  | { type: 'animation'; id: string; url: string; title: string; description?: string; code?: string };
+export type LearningItem =
+  | {
+      type: "note";
+      id: string;
+      title: string;
+      content: string;
+      tags?: string[];
+    }
+  | {
+      type: "visual";
+      id: string;
+      chartType: "bar" | "line" | "pie" | "doughnut" | "radar" | "mermaid";
+      data: any;
+      title: string;
+      description?: string;
+    }
+  | {
+      type: "code";
+      id: string;
+      code: string;
+      language: string;
+      explanation?: string;
+    }
+  | { type: "slide"; id: string; title: string; bulletPoints: string[] }
+  | {
+      type: "animation";
+      id: string;
+      url: string;
+      title: string;
+      description?: string;
+      code?: string;
+    };
 
 export const useVoiceAgent = (token: string) => {
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const [status, setStatus] = useState('Disconnected');
+  const [status, setStatus] = useState("Disconnected");
   const [question, setQuestion] = useState<string | null>(null);
-  const [testCases, setTestCases] = useState<{input: string, expectedOutput: string}[]>([]);
+  const [testCases, setTestCases] = useState<
+    { input: string; expectedOutput: string }[]
+  >([]);
   const [isSolved, setIsSolved] = useState(false);
   const [correctedCode, setCorrectedCode] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [agentState, setAgentState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
+  const [agentState, setAgentState] = useState<
+    "idle" | "listening" | "thinking" | "speaking"
+  >("idle");
   const isSubmittingRef = useRef(false);
 
   useEffect(() => {
@@ -25,23 +55,33 @@ export const useVoiceAgent = (token: string) => {
 
   // New State for Learning Stream
   const [learningStream, setLearningStream] = useState<LearningItem[]>([]);
-  
+
   // Keep track of the latest visualization for backward compatibility or focused view if needed
   const [visualization, setVisualization] = useState<{
-    type: 'bar' | 'line' | 'pie' | 'doughnut' | 'radar' | 'mermaid';
+    type: "bar" | "line" | "pie" | "doughnut" | "radar" | "mermaid";
     data: any;
     title?: string;
     description?: string;
   } | null>(null);
 
   // Per-card execution state
-  const [executionStates, setExecutionStates] = useState<Record<string, { isRunning: boolean; output: string | null; isError: boolean; language: string }>>({});
+  const [executionStates, setExecutionStates] = useState<
+    Record<
+      string,
+      {
+        isRunning: boolean;
+        output: string | null;
+        isError: boolean;
+        language: string;
+      }
+    >
+  >({});
 
   // Global state for main editor (interview mode)
   const [output, setOutput] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  
+
   const [isMuted, setIsMuted] = useState(false);
   const isMutedRef = useRef(false);
 
@@ -53,190 +93,214 @@ export const useVoiceAgent = (token: string) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef<number>(0);
 
-  const startSession = useCallback((mode: 'interview' | 'tutor', config?: any) => {
-    if (!token) {
-        console.error('No token provided');
-        return;
-    }
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+  const startSession = useCallback(
+    (mode: "interview" | "tutor", config?: any) => {
+      // if (!token) {
+      //     console.error('No token provided');
+      //     return;
+      // }
+      if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    try {
-      const ws = new WebSocket(`ws://localhost:8080?token=${token}`);
-      wsRef.current = ws;
+      try {
+        const ws = new WebSocket(`ws://localhost:8080?token=${token}`);
+        wsRef.current = ws;
 
-      ws.onopen = () => {
-        setStatus('Connected');
-        setIsSessionActive(true);
-        initAudio();
-        
-        // Initialize session with mode and config
-        ws.send(JSON.stringify({
-          type: 'init_session',
-          mode,
-          config
-        }));
-      };
+        ws.onopen = () => {
+          console.log("In here..");
+          setStatus("Connected");
+          setIsSessionActive(true);
+          initAudio();
 
-      ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        
-        if (data.event === 'media' && data.media.payload) {
-          playAudio(data.media.payload);
-          // If we receive audio after submitting, we can assume the response has started
-          setIsSubmitting(false);
-          setIsRunning(false);
-          setAgentState('speaking');
-        }
+          // Initialize session with mode and config
+          ws.send(
+            JSON.stringify({
+              type: "init_session",
+              mode,
+              config,
+            })
+          );
+        };
 
-        if (data.type === 'speech_started') {
-          setAgentState('listening');
-        }
+        ws.onmessage = async (event) => {
+          const data = JSON.parse(event.data);
 
-        if (data.type === 'speech_stopped') {
-          setAgentState('thinking');
-        }
+          if (data.event === "media" && data.media.payload) {
+            playAudio(data.media.payload);
+            // If we receive audio after submitting, we can assume the response has started
+            setIsSubmitting(false);
+            setIsRunning(false);
+            setAgentState("speaking");
+          }
 
-        if (data.type === 'thinking') {
-          setAgentState('thinking');
-        }
+          if (data.type === "speech_started") {
+            setAgentState("listening");
+          }
 
-        if (data.type === 'question') {
-          setQuestion(data.question);
-          setTestCases(data.testCases || []);
-          setIsSolved(false);
-          setCorrectedCode(null);
-          setOutput(null);
-        }
+          if (data.type === "speech_stopped") {
+            setAgentState("thinking");
+          }
 
-        if (data.type === 'question_solved') {
-          setIsSolved(true);
-        }
+          if (data.type === "thinking") {
+            setAgentState("thinking");
+          }
 
-        if (data.type === 'correction') {
-          setCorrectedCode(data.correctedCode);
-          setIsSubmitting(false);
-          
-          // Add to learning stream as a Code Card
-          setLearningStream(prev => [...prev, {
-            type: 'code',
-            id: Date.now().toString(),
-            code: data.correctedCode,
-            language: data.language || 'javascript',
-            explanation: data.explanation
-          }]);
-        }
+          if (data.type === "question") {
+            setQuestion(data.question);
+            setTestCases(data.testCases || []);
+            setIsSolved(false);
+            setCorrectedCode(null);
+            setOutput(null);
+          }
 
-        if (data.type === 'execution_output') {
-          if (data.id) {
-            // Update specific card state
-            setExecutionStates(prev => ({
+          if (data.type === "question_solved") {
+            setIsSolved(true);
+          }
+
+          if (data.type === "correction") {
+            setCorrectedCode(data.correctedCode);
+            setIsSubmitting(false);
+
+            // Add to learning stream as a Code Card
+            setLearningStream((prev) => [
+              ...prev,
+              {
+                type: "code",
+                id: Date.now().toString(),
+                code: data.correctedCode,
+                language: data.language || "javascript",
+                explanation: data.explanation,
+              },
+            ]);
+          }
+
+          if (data.type === "execution_output") {
+            if (data.id) {
+              // Update specific card state
+              setExecutionStates((prev) => ({
                 ...prev,
                 [data.id]: {
-                    isRunning: false,
-                    output: data.output,
-                    isError: data.status === 'error',
-                    language: data.language || 'javascript',
-                }
-            }));
-          } else {
-            // Global state (interview mode)
-            setOutput(data.output);
-            setIsError(data.status === 'error');
-            setIsRunning(false);
+                  isRunning: false,
+                  output: data.output,
+                  isError: data.status === "error",
+                  language: data.language || "javascript",
+                },
+              }));
+            } else {
+              // Global state (interview mode)
+              setOutput(data.output);
+              setIsError(data.status === "error");
+              setIsRunning(false);
+            }
           }
-        }
 
-        if (data.type === 'chart') {
-          const newVisual = {
-            type: data.chartType,
-            data: data.data,
-            title: data.title,
-            description: data.description
-          };
-          
-          setVisualization(newVisual);
-          
-          // Add to learning stream as a Visual Card
-          setLearningStream(prev => [...prev, {
-            type: 'visual',
-            id: Date.now().toString(),
-            chartType: data.chartType,
-            data: data.data,
-            title: data.title,
-            description: data.description
-          }]);
-        }
-
-        if (data.type === 'diagram') {
+          if (data.type === "chart") {
             const newVisual = {
-              type: 'mermaid' as const,
+              type: data.chartType,
+              data: data.data,
+              title: data.title,
+              description: data.description,
+            };
+
+            setVisualization(newVisual);
+
+            // Add to learning stream as a Visual Card
+            setLearningStream((prev) => [
+              ...prev,
+              {
+                type: "visual",
+                id: Date.now().toString(),
+                chartType: data.chartType,
+                data: data.data,
+                title: data.title,
+                description: data.description,
+              },
+            ]);
+          }
+
+          if (data.type === "diagram") {
+            const newVisual = {
+              type: "mermaid" as const,
               data: data.code,
               title: data.title,
-              description: data.description
+              description: data.description,
             };
-            
-            setVisualization(newVisual);
-            
-            // Add to learning stream as a Visual Card
-            setLearningStream(prev => [...prev, {
-              type: 'visual',
-              id: Date.now().toString(),
-              chartType: 'mermaid',
-              data: data.code, // Pass code string directly as data
-              title: data.title,
-              description: data.description
-            }]);
-        }
 
-        if (data.type === 'note') {
+            setVisualization(newVisual);
+
+            // Add to learning stream as a Visual Card
+            setLearningStream((prev) => [
+              ...prev,
+              {
+                type: "visual",
+                id: Date.now().toString(),
+                chartType: "mermaid",
+                data: data.code, // Pass code string directly as data
+                title: data.title,
+                description: data.description,
+              },
+            ]);
+          }
+
+          if (data.type === "note") {
             // Add to learning stream as a Note Card
-            setLearningStream(prev => [...prev, {
-                type: 'note',
+            setLearningStream((prev) => [
+              ...prev,
+              {
+                type: "note",
                 id: Date.now().toString(),
                 title: data.title,
                 content: data.content,
-                tags: data.tags
-            }]);
-        }
+                tags: data.tags,
+              },
+            ]);
+          }
 
-        if (data.type === 'slide') {
-            setLearningStream(prev => [...prev, {
-                type: 'slide',
+          if (data.type === "slide") {
+            setLearningStream((prev) => [
+              ...prev,
+              {
+                type: "slide",
                 id: Date.now().toString(),
                 title: data.title,
-                bulletPoints: data.bulletPoints
-            }]);
-        }
+                bulletPoints: data.bulletPoints,
+              },
+            ]);
+          }
 
-        if (data.type === 'animation') {
-            setLearningStream(prev => [...prev, {
-                type: 'animation',
+          if (data.type === "animation") {
+            setLearningStream((prev) => [
+              ...prev,
+              {
+                type: "animation",
                 id: Date.now().toString(),
                 url: data.url,
                 title: data.title,
                 description: data.description,
-                code: data.code
-            }]);
-        }
-      };
+                code: data.code,
+              },
+            ]);
+          }
+        };
 
-      ws.onclose = () => {
-        setStatus('Disconnected');
-        setIsSessionActive(false);
-        stopAudio();
-      };
+        ws.onclose = () => {
+          setStatus("Disconnected");
+          setIsSessionActive(false);
+          stopAudio();
+        };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setStatus('Error');
-        setIsSubmitting(false);
-        setIsRunning(false);
-      };
-    } catch (error) {
-      console.error('Failed to start session:', error);
-      setStatus('Error');
-    }
-  }, []);
+        ws.onerror = (error) => {
+          console.error("WebSocket error:", error);
+          setStatus("Error");
+          setIsSubmitting(false);
+          setIsRunning(false);
+        };
+      } catch (error) {
+        console.error("Failed to start session:", error);
+        setStatus("Error");
+      }
+    },
+    []
+  );
 
   const stopSession = useCallback(() => {
     if (wsRef.current) {
@@ -245,13 +309,13 @@ export const useVoiceAgent = (token: string) => {
     }
     stopAudio();
     setIsSessionActive(false);
-    setStatus('Disconnected');
+    setStatus("Disconnected");
     setQuestion(null);
     setCorrectedCode(null);
     setOutput(null);
     setIsSubmitting(false);
     setIsRunning(false);
-    setAgentState('idle');
+    setAgentState("idle");
     setVisualization(null);
     setLearningStream([]);
     setExecutionStates({});
@@ -260,39 +324,50 @@ export const useVoiceAgent = (token: string) => {
   const sendCode = useCallback((code: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       setIsSubmitting(true);
-      wsRef.current.send(JSON.stringify({
-        type: 'submit_code',
-        code: code
-      }));
+      wsRef.current.send(
+        JSON.stringify({
+          type: "submit_code",
+          code: code,
+        })
+      );
     }
   }, []);
 
   const runCode = useCallback((code: string, id?: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       if (id) {
-        setExecutionStates(prev => ({
-            ...prev,
-            [id]: { isRunning: true, output: null, isError: false, language: 'javascript' }
+        setExecutionStates((prev) => ({
+          ...prev,
+          [id]: {
+            isRunning: true,
+            output: null,
+            isError: false,
+            language: "javascript",
+          },
         }));
       } else {
         setIsRunning(true);
         setOutput(null);
         setIsError(false);
       }
-      
-      wsRef.current.send(JSON.stringify({
-        type: 'run_code',
-        code: code,
-        id: id // Pass ID to server so it can echo it back
-      }));
+
+      wsRef.current.send(
+        JSON.stringify({
+          type: "run_code",
+          code: code,
+          id: id, // Pass ID to server so it can echo it back
+        })
+      );
     }
   }, []);
 
   const nextQuestion = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'next_question'
-      }));
+      wsRef.current.send(
+        JSON.stringify({
+          type: "next_question",
+        })
+      );
       setIsSolved(false);
       setCorrectedCode(null);
       setOutput(null);
@@ -302,7 +377,7 @@ export const useVoiceAgent = (token: string) => {
   }, []);
 
   const toggleMute = useCallback(() => {
-    setIsMuted(prev => !prev);
+    setIsMuted((prev) => !prev);
   }, []);
 
   const clearCorrection = useCallback(() => {
@@ -311,55 +386,74 @@ export const useVoiceAgent = (token: string) => {
 
   const sendMessage = useCallback((text: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-            type: 'text_message',
-            text: text
-        }));
+      wsRef.current.send(
+        JSON.stringify({
+          type: "text_message",
+          text: text,
+        })
+      );
     }
   }, []);
 
-  const updateLearningItem = useCallback((id: string, updates: Partial<LearningItem>) => {
-    setLearningStream(prev => prev.map(item => 
-        item.id === id ? { ...item, ...updates } as LearningItem : item
-    ));
-  }, []);
+  const updateLearningItem = useCallback(
+    (id: string, updates: Partial<LearningItem>) => {
+      setLearningStream((prev) =>
+        prev.map((item) =>
+          item.id === id ? ({ ...item, ...updates } as LearningItem) : item
+        )
+      );
+    },
+    []
+  );
 
   const initAudio = async () => {
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      const audioContext = new (window.AudioContext ||
+        (window as any).webkitAudioContext)({ sampleRate: 24000 });
       await audioContext.resume();
       audioContextRef.current = audioContext;
       nextStartTimeRef.current = audioContext.currentTime;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: {
-        channelCount: 1,
-        sampleRate: 24000,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      }});
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          sampleRate: 24000,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       const source = audioContext.createMediaStreamSource(stream);
-      
+
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
-      
+
       source.connect(processor);
       processor.connect(audioContext.destination);
 
       processor.onaudioprocess = (e) => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && !isMutedRef.current && !isSubmittingRef.current) {
+        if (
+          wsRef.current &&
+          wsRef.current.readyState === WebSocket.OPEN &&
+          !isMutedRef.current &&
+          !isSubmittingRef.current
+        ) {
           const inputData = e.inputBuffer.getChannelData(0);
           const pcmData = floatTo16BitPCM(inputData);
-          const base64Data = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
-          
-          wsRef.current.send(JSON.stringify({
-            type: 'audio',
-            payload: base64Data
-          }));
+          const base64Data = btoa(
+            String.fromCharCode(...new Uint8Array(pcmData.buffer))
+          );
+
+          wsRef.current.send(
+            JSON.stringify({
+              type: "audio",
+              payload: base64Data,
+            })
+          );
         }
       };
     } catch (error) {
-      console.error('Audio initialization error:', error);
-      setStatus('Audio Error');
+      console.error("Audio initialization error:", error);
+      setStatus("Audio Error");
     }
   };
 
@@ -375,7 +469,11 @@ export const useVoiceAgent = (token: string) => {
       if (!audioContextRef.current) return;
 
       const float32Data = base64ToFloat32Array(base64Audio);
-      const audioBuffer = audioContextRef.current.createBuffer(1, float32Data.length, 24000);
+      const audioBuffer = audioContextRef.current.createBuffer(
+        1,
+        float32Data.length,
+        24000
+      );
       audioBuffer.getChannelData(0).set(float32Data);
 
       const source = audioContextRef.current.createBufferSource();
@@ -384,14 +482,14 @@ export const useVoiceAgent = (token: string) => {
 
       const currentTime = audioContextRef.current.currentTime;
       const startTime = Math.max(currentTime, nextStartTimeRef.current);
-      
+
       source.start(startTime);
       nextStartTimeRef.current = startTime + audioBuffer.duration;
       if (nextStartTimeRef.current < audioContextRef.current.currentTime) {
         nextStartTimeRef.current = audioContextRef.current.currentTime;
       }
     } catch (error) {
-      console.error('Error playing audio:', error);
+      console.error("Error playing audio:", error);
     }
   };
 
@@ -420,6 +518,6 @@ export const useVoiceAgent = (token: string) => {
     setVisualization,
     learningStream,
     sendMessage,
-    updateLearningItem
+    updateLearningItem,
   };
 };

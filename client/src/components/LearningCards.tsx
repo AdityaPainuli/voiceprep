@@ -88,9 +88,10 @@ interface VisualCardProps {
     data: any;
     title: string;
     description?: string;
+    onExpand?: () => void;
 }
 
-export const VisualCard: React.FC<VisualCardProps> = ({ type, data, title, description }) => {
+export const VisualCard: React.FC<VisualCardProps> = ({ type, data, title, description, onExpand }) => {
     return (
         <div className="bg-[#161b22] rounded-xl border border-gray-800 p-6 shadow-lg mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
@@ -100,9 +101,20 @@ export const VisualCard: React.FC<VisualCardProps> = ({ type, data, title, descr
                     </span>
                     {title || "Visual Explanation"}
                 </h3>
-                <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs font-medium rounded-full border border-purple-500/20 uppercase">
-                    {type === 'mermaid' ? 'Diagram' : `${type} Chart`}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs font-medium rounded-full border border-purple-500/20 uppercase">
+                        {type === 'mermaid' ? 'Diagram' : `${type} Chart`}
+                    </span>
+                    {onExpand && (
+                        <button
+                            onClick={onExpand}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition-colors"
+                            title="Maximize"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                        </button>
+                    )}
+                </div>
             </div>
             <div className={`w-full bg-black/20 rounded-lg p-4 border border-gray-800/50 ${type === 'mermaid' ? 'min-h-[200px]' : 'h-[400px]'}`}>
                 {type === 'mermaid' ? (
@@ -204,9 +216,10 @@ export interface VideoCardProps {
     url: string;
     title: string;
     description?: string;
+    onExpand?: () => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ url, title, description }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ url, title, description, onExpand }) => {
     return (
         <div className="bg-[#161b22] rounded-xl border border-gray-800 p-6 shadow-lg mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
@@ -216,9 +229,20 @@ export const VideoCard: React.FC<VideoCardProps> = ({ url, title, description })
                     </span>
                     {title}
                 </h3>
-                <span className="px-2 py-0.5 bg-red-500/10 text-red-400 text-xs font-medium rounded-full border border-red-500/20 uppercase">
-                    Animation
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-red-500/10 text-red-400 text-xs font-medium rounded-full border border-red-500/20 uppercase">
+                        Animation
+                    </span>
+                    {onExpand && (
+                        <button
+                            onClick={onExpand}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition-colors"
+                            title="Maximize"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                        </button>
+                    )}
+                </div>
             </div>
             <div className="w-full bg-black/40 rounded-lg overflow-hidden border border-gray-800/50">
                 <video

@@ -399,13 +399,21 @@ wss.on('connection', async (ws, req) => {
                     }
                 };
                 console.log('Injecting tutor context:', JSON.stringify(contextMessage));
-                try {
-                    openAIWs.send(JSON.stringify(contextMessage));
-                    openAIWs.send(JSON.stringify({ type: 'response.create' }));
-                }
-                catch (e) {
-                    console.error('Failed to send context message:', e);
-                }
+                // Add a small delay to ensure session update is processed
+                setTimeout(() => {
+                    try {
+                        openAIWs.send(JSON.stringify(contextMessage));
+                        openAIWs.send(JSON.stringify({
+                            type: 'response.create',
+                            response: {
+                                instructions: "Generate a response to the user's request immediately. Do not wait for user input."
+                            }
+                        }));
+                    }
+                    catch (e) {
+                        console.error('Failed to send context message:', e);
+                    }
+                }, 500);
             }
         };
         runInit();

@@ -86,6 +86,11 @@ fastify.get('/api/me', async (request, reply) => {
   }
 });
 
+// health checkpoint
+fastify.get('/api/health', async (request, response) => {
+  return response.code(200).send({ status: "ok"})
+})
+
 fastify.post('/api/upgrade', async (request, reply) => {
   try {
     const authHeader = request.headers.authorization;

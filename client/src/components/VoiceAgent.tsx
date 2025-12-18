@@ -19,7 +19,7 @@ const VoiceAgent: React.FC<VoiceAgentProps> = ({
     status,
     startSession,
     stopSession,
-    isMuted = false,
+    isMuted = true,
     toggleMute,
     agentState = 'idle',
     title = "Interviewer AI",
