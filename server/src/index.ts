@@ -34,6 +34,7 @@ const manimService = new ManimService();
 const authService = new AuthService();
 const usageService = new UsageService();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-this';
+const BASE_URL = process.env.BASE_URL
 
 const startServer = async () => {
   try {
@@ -135,38 +136,38 @@ wss.on('connection', async (ws, req) => {
   let user: any = null;
   const sessionStartTime = Date.now();
 
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      user = await authService.getUser(decoded.userId);
+  // if (token) {
+  //   try {
+  //     const decoded = jwt.verify(token, JWT_SECRET) as any;
+  //     user = await authService.getUser(decoded.userId);
       
-      // Check if user has minutes left
-      try {
-        await usageService.checkLimit(user.id, 'realtimeMinutes', 1); // Check if at least 1 min available
-      } catch (e: any) {
-        console.log('User limit reached:', e.message);
-        ws.close(1008, e.message);
-        return;
-      }
+  //     // Check if user has minutes left
+  //     try {
+  //       await usageService.checkLimit(user.id, 'realtimeMinutes', 1); // Check if at least 1 min available
+  //     } catch (e: any) {
+  //       console.log('User limit reached:', e.message);
+  //       ws.close(1008, e.message);
+  //       return;
+  //     }
 
-      console.log(`User connected: ${user.email} (${user.plan})`);
-    } catch (err) {
-      console.log('Invalid token for WS connection');
-      ws.close(1008, 'Invalid token');
-      return;
-    }
-  } else {
-    console.log('No token provided for WS connection');
-    ws.close(1008, 'Authentication required');
-    return;
-  }
+  //     console.log(`User connected: ${user.email} (${user.plan})`);
+  //   } catch (err) {
+  //     console.log('Invalid token for WS connection');
+  //     ws.close(1008, 'Invalid token');
+  //     return;
+  //   }
+  // } else {
+  //   console.log('No token provided for WS connection');
+  //   ws.close(1008, 'Authentication required');
+  //   return;
+  // }
 
   console.log('Client connected');
 
   // ... (rest of the WS logic, now with access to `user` object)
   // Pass `user` to initializeSession or store it in a map if needed
   
-  const openAIWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01', {
+  const openAIWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-realtime', {
       headers: {
       Authorization: `Bearer ${OPENAI_API_KEY}`,
       "OpenAI-Beta": "realtime=v1",
@@ -441,7 +442,7 @@ wss.on('connection', async (ws, req) => {
   openAIWs.on('message', async (data) => {
     try {
         const response = JSON.parse(data.toString());
-        
+        console.log("OPENAI_RESPONSE: ", JSON.stringify(response))
         if (response.type === 'session.updated') {
             console.log('Session updated successfully:', response);
         }
@@ -541,7 +542,7 @@ wss.on('connection', async (ws, req) => {
                 
                 try {
                     const videoUrl = await manimService.generateVideo(args.code, args.title);
-                    const fullUrl = `http://localhost:8080${videoUrl}`;
+                    const fullUrl = `${BASE_URL}/${videoUrl}`;
                     
                     ws.send(JSON.stringify({
                         type: 'animation',

@@ -84,6 +84,7 @@ export const useVoiceAgent = (token: string) => {
 
   const [isMuted, setIsMuted] = useState(false);
   const isMutedRef = useRef(false);
+  const BASE_WS = process.env.NEXT_PUBLIC_BASE_WS_URL;
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -102,7 +103,7 @@ export const useVoiceAgent = (token: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
       try {
-        const ws = new WebSocket(`ws://localhost:8080?token=${token}`);
+        const ws = new WebSocket(`${BASE_WS}?token=${token}`);
         wsRef.current = ws;
 
         ws.onopen = () => {

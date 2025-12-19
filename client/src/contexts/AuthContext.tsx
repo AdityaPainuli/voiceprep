@@ -31,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
     useEffect(() => {
         const storedToken = localStorage.getItem('token');
@@ -44,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const fetchUser = async (authToken: string) => {
         try {
-            const res = await fetch('http://localhost:8080/api/me', {
+            const res = await fetch(`${BASE_API_URL}/api/me`, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
             if (res.ok) {
@@ -61,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const login = async (email: string, password: string) => {
-        const res = await fetch('http://localhost:8080/api/login', {
+        const res = await fetch(`${BASE_API_URL}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -76,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const register = async (email: string, password: string) => {
-        const res = await fetch('http://localhost:8080/api/register', {
+        const res = await fetch(`${BASE_API_URL}/api/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -99,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const upgrade = async (plan: string) => {
         if (!token) return;
-        const res = await fetch('http://localhost:8080/api/upgrade', {
+        const res = await fetch(`${BASE_API_URL}/api/upgrade`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
