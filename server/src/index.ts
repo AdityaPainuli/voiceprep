@@ -56,6 +56,10 @@ fastify.register(cors, {
 
 registerRoutes(fastify)
 
+fastify.get('/api/health', async (request, response) => {
+  return response.code(200).send({ status: "ok"})
+})
+
 fastify.post('/api/animations/:id', async (request, reply) => {
     // In frontend - <video src="/api/animations/manim_123" controls />
     const {id} = request.params as {id : string};
