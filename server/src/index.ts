@@ -1,13 +1,10 @@
-import Fastify, { RequestPayload } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import Fastify from 'fastify';
 import WebSocket from 'ws';
 import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
 import path from 'path';
 import fastifyStatic from '@fastify/static';
 import { ManimService } from './services/ManimService';
-import { UsageService } from './services/UsageService';
-import jwt from 'jsonwebtoken';
 import cors from '@fastify/cors';
 import { railwayS3 } from './services/bucket';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
