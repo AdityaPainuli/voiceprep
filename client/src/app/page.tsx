@@ -25,7 +25,7 @@ export default function Home() {
 
         {!loading && user && (
           <div className="flex gap-4 items-center">
-            <span className="text-gray-400">Welcome, {user.email}</span>
+            <span className="text-gray-400">Welcome, {user.name}</span>
             <Link href="/dashboard" className="px-6 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors">
               Go to Dashboard
             </Link>

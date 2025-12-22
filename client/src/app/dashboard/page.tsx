@@ -11,7 +11,7 @@ const PLANS = [
 ];
 
 export default function DashboardPage() {
-    const { user, logout, upgrade, refreshUser, loading } = useAuth();
+    const { user, logout, refreshUser, loading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
@@ -22,14 +22,6 @@ export default function DashboardPage() {
 
     if (loading || !user) return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading...</div>;
 
-    const handleUpgrade = async (plan: string) => {
-        try {
-            await upgrade(plan);
-            alert(`Successfully upgraded to ${plan}!`);
-        } catch (err: any) {
-            alert(`Upgrade failed: ${err.message}`);
-        }
-    };
 
     return (
         <div className="min-h-screen bg-gray-900 text-white p-8">
@@ -92,19 +84,12 @@ export default function DashboardPage() {
                                         <h3 className="font-bold">{plan.name}</h3>
                                         <p className="text-xs text-gray-400">{plan.limits}</p>
                                     </div>
-                                    <div className="text-right">
+                                    {/* <div className="text-right">
                                         <p className="font-bold mb-1">{plan.price}</p>
-                                        {user.plan === plan.name ? (
+                                        {user.plan === plan.name ? 
                                             <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">Current</span>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleUpgrade(plan.name)}
-                                                className="text-xs bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded transition-colors"
-                                            >
-                                                Upgrade
-                                            </button>
-                                        )}
-                                    </div>
+                                        }
+                                    </div> */}
                                 </div>
                             ))}
                         </div>

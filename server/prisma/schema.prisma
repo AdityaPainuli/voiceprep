@@ -1,28 +1,171 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+}
+
+enum UserPlan {
+  TRIAL
+  BASIC
+  PRO
+  UNLIMITED
+}
+
+enum LessonPlanStatus {
+  DRAFT
+  GENERATING
+  READY
+  FAILED
+}
+
+enum AssetStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+enum DaigramType {
+  FLOWCHART
+  GRAPH
+  SEQUENCE
+  ARCHITECHURE
+  CUSTOM
+}
+
+enum ProgrammingLanguage {
+  GO
+  JAVASCRIPT
+  PYTHON
+  TYPESCRIPT
+}
+
+enum GradeLevel {
+  BEGINEER
+  INTERMEDIATE
+  EXPERIENCE
+}
+
+enum LessonPlanType {
+  GENERAL
+  CODING
+}
+
+enum DiagramType {
+  FLOWCHART
+  GRAPH
+  SEQUENCE
+  ARCHITECTURE
+  CUSTOM
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  password      String   // Hashed
-  plan          String   @default("TRIAL") // 'TRIAL', 'BASIC', 'PRO', 'UNLIMITED'
-  createdAt     DateTime @default(now())
-  
-  // Usage Counters (Reset monthly or based on billing cycle)
+  id       String   @id @default(uuid())
+  email    String   @unique
+  password String
+  name     String?
+  plan     UserPlan @default(TRIAL)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   realtimeMinutesUsed Int @default(0)
   diagramsUsed        Int @default(0)
   videosUsed          Int @default(0)
   tokensUsed          Int @default(0)
-  
-  // Credits (Add-ons)
-  creditBalance       Float @default(0.0)
+
+  creditBalance Float @default(0)
+
+  lessonPlans LessonPlan[]
+}
+
+model LessonPlan {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  type   LessonPlanType
+  topic  String
+  domain String?
+
+  gradeLevel GradeLevel
+
+  // Only for CODING plans
+  programmingLanguage ProgrammingLanguage?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slides Slide[]
+
+  @@index([userId])
+}
+
+model Slide {
+  id           String     @id @default(uuid())
+  lessonPlanId String
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id])
+
+  title   String
+  order   Int
+  content String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  diagrams   Diagram[]
+  animations Animation[]
+  videos     Video[]
+
+  @@unique([lessonPlanId, order])
+  @@index([lessonPlanId])
+}
+
+model Diagram {
+  id      String @id @default(uuid())
+  slideId String
+  slide   Slide  @relation(fields: [slideId], references: [id])
+
+  type     DiagramType
+  prompt   String?
+  fileUrl  String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slideId])
+}
+
+model Animation {
+  id      String @id @default(uuid())
+  slideId String
+  slide   Slide  @relation(fields: [slideId], references: [id])
+
+  fileId   String  @unique
+  fileUrl  String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slideId])
+}
+
+model Video {
+  id      String @id @default(uuid())
+  slideId String
+  slide   Slide  @relation(fields: [slideId], references: [id])
+
+  prompt   String?
+  fileUrl  String?
+  duration Int?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slideId])
 }

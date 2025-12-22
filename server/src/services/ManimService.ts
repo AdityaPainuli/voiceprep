@@ -1,104 +1,93 @@
-import { exec } from 'child_process';
-import fs from 'fs';
-import path from 'path';
-import { promisify } from 'util';
-import crypto from 'crypto';
+import path from "path";
+import fs from "fs";
+import crypto from "crypto";
+import { exec } from "child_process";
+import { promisify } from "util";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { railwayS3 } from "./bucket";
 
 const execAsync = promisify(exec);
 
 export class ManimService {
-    private outputDir: string;
-    private pythonPath: string;
+  private outputDir: string;
+  private pythonPath: string;
 
-    constructor() {
-        this.outputDir = path.join(process.cwd(), 'public', 'animations');
-        // Use the venv python executable
-        this.pythonPath = path.join(process.cwd(), 'venv', 'bin', 'python');
-        
-        // Ensure output directory exists
-        if (!fs.existsSync(this.outputDir)) {
-            fs.mkdirSync(this.outputDir, { recursive: true });
-        }
+  constructor() {
+    this.outputDir = path.join("/tmp", "manim");
+    this.pythonPath =
+      process.env.PYTHON_PATH ||
+      path.join(process.cwd(), "venv", "bin", "python");
+
+    if (!fs.existsSync(this.outputDir)) {
+      fs.mkdirSync(this.outputDir, { recursive: true });
+    }
+  }
+
+  async generateVideo(code: string): Promise<{ id: string; key: string }> {
+    const id = `manim_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    const pyFilePath = path.join(this.outputDir, `${id}.py`);
+    const finalMp4Path = path.join(this.outputDir, `${id}.mp4`);
+
+    let finalCode = code;
+    // Adding fail-safe for the tool code generating
+    if (!code.includes("from manim import *")) {
+      finalCode = `from manim import *\n\n${code}`;
     }
 
-    async generateVideo(code: string, title: string): Promise<string> {
-        const timestamp = Date.now();
-        const randomId = crypto.randomBytes(4).toString('hex');
-        const filename = `manim_${timestamp}_${randomId}`;
-        const pyFilePath = path.join(this.outputDir, `${filename}.py`);
-        
-        // Wrap code to ensure it imports manim and has a class
-        // We expect the LLM to provide the full Scene class, but we can add imports if missing
-        let finalCode = code;
-        if (!code.includes('from manim import *')) {
-            finalCode = `from manim import *\n\n${code}`;
-        }
+    await fs.promises.writeFile(pyFilePath, finalCode);
 
-        // Write python file
-        await fs.promises.writeFile(pyFilePath, finalCode);
+    try {
+      const command = `"${this.pythonPath}" -m manim -ql "${pyFilePath}" -o "${id}.mp4" --media_dir "${this.outputDir}"`;
+      console.log("🎬 Executing Manim:", command);
 
-        try {
-            // Run manim
-            // -ql = quality low (faster rendering)
-            // -o = output filename
-            // --media_dir = where to store media
-            const command = `"${this.pythonPath}" -m manim -ql "${pyFilePath}" -o "${filename}.mp4" --media_dir "${this.outputDir}"`;
-            
-            console.log(`Executing Manim: ${command}`);
-            const { stdout, stderr } = await execAsync(command);
-            console.log('Manim stdout:', stdout);
-            
-            // Manim usually outputs to media_dir/videos/py_filename/quality/filename.mp4
-            // But with -o and custom media_dir it might vary. 
-            // Let's rely on the fact that we set the output filename.
-            // By default manim creates a complex folder structure. 
-            // Let's try to find the file or simplify the command.
-            
-            // Simpler approach: Let manim do its thing and find the file.
-            // With -o, it names the file. 
-            // The output path usually ends up in <media_dir>/videos/<py_filename>/480p15/<filename>.mp4 for -ql
-            
-            // Actually, to make it easier to serve, let's move the file after generation if needed.
-            // Or better, search for the .mp4 file in the output dir recursively.
-            
-            // Construct the expected path based on Manim defaults for -ql (480p15)
-            // Note: The class name is usually needed for the command if multiple scenes, 
-            // but if we don't specify, it renders the first one.
-            
-            // Let's assume the file is generated. We need to find where.
-            // A reliable way is to use `find` or just look in the expected folder.
-            // For -ql, it's 480p15.
-            
-            const expectedPath = path.join(this.outputDir, 'videos', filename, '480p15', `${filename}.mp4`);
-            console.log('Expected video path:', expectedPath);
-            
-            // We want to serve it from /animations/<filename>.mp4
-            const publicPath = path.join(this.outputDir, `${filename}.mp4`);
-            console.log('Target public path:', publicPath);
-            
-            // Wait a bit for file system
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            if (fs.existsSync(expectedPath)) {
-                console.log('File found at expected path, moving...');
-                await fs.promises.rename(expectedPath, publicPath);
-                // Clean up the video folder
-                await fs.promises.rm(path.join(this.outputDir, 'videos'), { recursive: true, force: true });
-                console.log('Move successful');
-            } else {
-                console.error('File NOT found at expected path');
-                // Fallback: try to find any mp4 in the directory created
-                 // This part is a bit brittle, but let's try to be robust
-                 // If the user didn't provide a class name, manim might error or pick one.
-            }
+      // TODO: Never a good idea to execute code in-house, probably handle it over in isolated container or e2b machines.
+      await execAsync(command);
 
-            // Cleanup python file
-            // await fs.promises.unlink(pyFilePath);
+      const expectedPath = path.join(
+        this.outputDir,
+        "videos",
+        id,
+        "480p15",
+        `${id}.mp4`
+      );
 
-            return `/animations/${filename}.mp4`;
-        } catch (error) {
-            console.error('Manim generation failed:', error);
-            throw new Error('Failed to generate animation');
-        }
+      if (!fs.existsSync(expectedPath)) {
+        throw new Error("Manim output not found");
+      }
+
+      await fs.promises.rename(expectedPath, finalMp4Path);
+
+      // Upload to Railway Object Storage
+      const objectKey = await this.uploadToRailway(finalMp4Path, id);
+
+      return { id, key: objectKey };
+    } catch (err) {
+      console.error("❌ Manim generation failed:", err);
+      throw new Error("Failed to generate animation");
+    } finally {
+      // Cleanup
+      fs.existsSync(pyFilePath) && fs.promises.unlink(pyFilePath);
+      fs.existsSync(finalMp4Path) && fs.promises.unlink(finalMp4Path);
+      fs.promises.rm(path.join(this.outputDir, "videos"), {
+        recursive: true,
+        force: true,
+      });
     }
+  }
+
+  private async uploadToRailway(localPath: string, id: string): Promise<string> {
+    const fileStream = fs.createReadStream(localPath);
+    const key = `manim/${id}.mp4`;
+
+    await railwayS3.send(
+      new PutObjectCommand({
+        Bucket: "optimized-holster-aovy0bb",
+        Key: key,
+        Body: fileStream,
+        ContentType: "video/mp4",
+      })
+    );
+
+    return key;
+  }
 }

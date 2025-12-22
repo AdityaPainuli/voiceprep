@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { RequestPayload } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import WebSocket from 'ws';
 import dotenv from 'dotenv';
@@ -6,10 +6,12 @@ import { WebSocketServer } from 'ws';
 import path from 'path';
 import fastifyStatic from '@fastify/static';
 import { ManimService } from './services/ManimService';
-import { AuthService } from './services/AuthService';
 import { UsageService } from './services/UsageService';
 import jwt from 'jsonwebtoken';
 import cors from '@fastify/cors';
+import { railwayS3 } from './services/bucket';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { registerRoutes } from './routes';
 
 dotenv.config();
 
@@ -31,8 +33,7 @@ fastify.register(fastifyStatic, {
 });
 
 const manimService = new ManimService();
-const authService = new AuthService();
-const usageService = new UsageService();
+// const usageService = new UsageService();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-this';
 const BASE_URL = process.env.BASE_URL
 
@@ -53,78 +54,41 @@ fastify.register(cors, {
   origin: true // Allow all origins for now (dev)
 });
 
-// Auth Routes
-fastify.post('/api/register', async (request, reply) => {
-  const { email, password } = request.body as any;
-  try {
-    const result = await authService.register(email, password);
-    return result;
-  } catch (err: any) {
-    return reply.code(400).send({ error: err.message });
-  }
-});
+registerRoutes(fastify)
 
-fastify.post('/api/login', async (request, reply) => {
-  const { email, password } = request.body as any;
-  try {
-    const result = await authService.login(email, password);
-    return result;
-  } catch (err: any) {
-    return reply.code(401).send({ error: err.message });
-  }
-});
+fastify.post('/api/animations/:id', async (request, reply) => {
+    // In frontend - <video src="/api/animations/manim_123" controls />
+    const {id} = request.params as {id : string};
+    const key = `manim/${id}.mp4`;
 
-fastify.get('/api/me', async (request, reply) => {
-  try {
-    const authHeader = request.headers.authorization;
-    if (!authHeader) throw new Error('No token');
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const user = await authService.getUser(decoded.userId);
-    return user;
-  } catch (err) {
-    return reply.code(401).send({ error: 'Unauthorized' });
-  }
-});
+    try {
+      const result = await railwayS3.send(
+        new GetObjectCommand({
+          Bucket: "optimized-holster-aovy0bb",
+          Key: key,
+        })
+      );
 
-// health checkpoint
-fastify.get('/api/health', async (request, response) => {
-  return response.code(200).send({ status: "ok"})
-})
+      if (!result.Body) {
+        reply.code(404).send({ error: 'Video not found' });
+        return;
+      }
 
-fastify.post('/api/upgrade', async (request, reply) => {
-  try {
-    const authHeader = request.headers.authorization;
-    if (!authHeader) throw new Error('No token');
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    
-    const { plan } = request.body as any;
-    if (!['BASIC', 'PRO', 'UNLIMITED'].includes(plan)) {
-      return reply.code(400).send({ error: 'Invalid plan' });
+      reply.header('Content-Type', "video/mp4").header('Cache-Control', 'no-store').header('Accept-Ranges', 'bytes')
+
+      return reply.send(result.Body)
+    } catch (err: any) {
+      if (err.name === "NoSuchKey") {
+        reply.code(404).send({ error: 'Video not found' });
+        return;
+      }
+
+      console.error("Failed to stream video: ", err);
+      reply.code(500).send({ error: "Failed to stream video" });
     }
 
-    // In a real app, we would process payment here.
-    // For now, we just update the user's plan.
-    
-    const prisma = new PrismaClient(); // Should probably inject or reuse, but this is quick
-    const user = await prisma.user.update({
-      where: { id: decoded.userId },
-      data: { plan }
-    });
+})
 
-    // Generate new token with updated plan
-    const newToken = jwt.sign({ userId: user.id, email: user.email, plan: user.plan }, JWT_SECRET, { expiresIn: '7d' });
-
-    return { user: { id: user.id, email: user.email, plan: user.plan }, token: newToken };
-  } catch (err: any) {
-    return reply.code(400).send({ error: err.message });
-  }
-});
-
-// ... (keep static file serving)
-
-// ... (keep startServer)
 
 const wss = new WebSocketServer({ server: fastify.server });
 
@@ -442,7 +406,6 @@ wss.on('connection', async (ws, req) => {
   openAIWs.on('message', async (data) => {
     try {
         const response = JSON.parse(data.toString());
-        console.log("OPENAI_RESPONSE: ", JSON.stringify(response))
         if (response.type === 'session.updated') {
             console.log('Session updated successfully:', response);
         }
@@ -451,36 +414,6 @@ wss.on('connection', async (ws, req) => {
             console.log('Tool called:', response);
             const args = JSON.parse(response.arguments);
             
-            // Check limits before executing tools
-            try {
-                if (response.name === 'generate_chart' || response.name === 'generate_diagram') {
-                    await usageService.checkLimit(user.id, 'diagrams');
-                    await usageService.incrementUsage(user.id, 'diagrams');
-                } else if (response.name === 'generate_animation') {
-                    await usageService.checkLimit(user.id, 'videos');
-                    await usageService.incrementUsage(user.id, 'videos');
-                }
-            } catch (e: any) {
-                console.error('Usage limit reached:', e.message);
-                // Send error to client via WS
-                ws.send(JSON.stringify({
-                    type: 'error',
-                    message: e.message
-                }));
-                // Fail the tool call gracefully? Or just don't execute?
-                // For now, we'll just return an error output to the model
-                 const toolOutput = {
-                    type: 'conversation.item.create',
-                    item: {
-                        type: 'function_call_output',
-                        call_id: response.call_id,
-                        output: JSON.stringify({ error: e.message })
-                    }
-                };
-                openAIWs.send(JSON.stringify(toolOutput));
-                openAIWs.send(JSON.stringify({ type: 'response.create' }));
-                return;
-            }
 
             if (response.name === 'post_question') {
                 ws.send(JSON.stringify({
@@ -541,7 +474,7 @@ wss.on('connection', async (ws, req) => {
                 console.log('Generating animation...');
                 
                 try {
-                    const videoUrl = await manimService.generateVideo(args.code, args.title);
+                    const videoUrl = await manimService.generateVideo(args.code);
                     const fullUrl = `${BASE_URL}/${videoUrl}`;
                     
                     ws.send(JSON.stringify({
@@ -549,7 +482,9 @@ wss.on('connection', async (ws, req) => {
                         url: fullUrl,
                         title: args.title,
                         description: args.description,
-                        code: args.code
+                        code: args.code,
+                        objectId: videoUrl.id,
+                        objectKey: videoUrl.key
                     }));
                 } catch (error) {
                     console.error('Animation generation failed:', error);
@@ -695,7 +630,7 @@ wss.on('connection', async (ws, req) => {
     
     // Track session duration
     if (user) {
-        await usageService.trackSessionDuration(user.id, sessionStartTime);
+        // await usageService.trackSessionDuration(user.id, sessionStartTime);
     }
   });
 });
