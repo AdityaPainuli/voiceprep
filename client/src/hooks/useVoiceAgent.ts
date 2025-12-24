@@ -96,13 +96,14 @@ export const useVoiceAgent = (token: string) => {
 
   const startSession = useCallback(
     (mode: "interview" | "tutor", config?: any) => {
-      // if (!token) {
-      //     console.error('No token provided');
-      //     return;
-      // }
+      if (!token) {
+        console.error("No token provided");
+        return;
+      }
       if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
       try {
+        // TODO: Add lessonPlanID once existing lessonPlan needs to be continued.
         const ws = new WebSocket(`${BASE_WS}?token=${token}`);
         wsRef.current = ws;
 
@@ -110,9 +111,7 @@ export const useVoiceAgent = (token: string) => {
           console.log("In here..");
           setStatus("Connected");
           setIsSessionActive(true);
-          initAudio();
 
-          // Initialize session with mode and config
           ws.send(
             JSON.stringify({
               type: "init_session",
@@ -120,6 +119,8 @@ export const useVoiceAgent = (token: string) => {
               config,
             })
           );
+
+          initAudio();
         };
 
         ws.onmessage = async (event) => {
@@ -158,16 +159,16 @@ export const useVoiceAgent = (token: string) => {
           }
 
           if (data.type === "correction") {
-            setCorrectedCode(data.correctedCode);
+            console.log("Coming from backend now: ", data.correctionCode);
+            setCorrectedCode(data.correctionCode);
             setIsSubmitting(false);
 
-            // Add to learning stream as a Code Card
             setLearningStream((prev) => [
               ...prev,
               {
                 type: "code",
                 id: Date.now().toString(),
-                code: data.correctedCode,
+                code: data.correctionCode,
                 language: data.language || "javascript",
                 explanation: data.explanation,
               },
@@ -176,7 +177,6 @@ export const useVoiceAgent = (token: string) => {
 
           if (data.type === "execution_output") {
             if (data.id) {
-              // Update specific card state
               setExecutionStates((prev) => ({
                 ...prev,
                 [data.id]: {
@@ -187,7 +187,6 @@ export const useVoiceAgent = (token: string) => {
                 },
               }));
             } else {
-              // Global state (interview mode)
               setOutput(data.output);
               setIsError(data.status === "error");
               setIsRunning(false);
@@ -204,7 +203,6 @@ export const useVoiceAgent = (token: string) => {
 
             setVisualization(newVisual);
 
-            // Add to learning stream as a Visual Card
             setLearningStream((prev) => [
               ...prev,
               {
@@ -228,7 +226,6 @@ export const useVoiceAgent = (token: string) => {
 
             setVisualization(newVisual);
 
-            // Add to learning stream as a Visual Card
             setLearningStream((prev) => [
               ...prev,
               {
@@ -243,7 +240,6 @@ export const useVoiceAgent = (token: string) => {
           }
 
           if (data.type === "note") {
-            // Add to learning stream as a Note Card
             setLearningStream((prev) => [
               ...prev,
               {

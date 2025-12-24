@@ -7,6 +7,6 @@ export default async function slideRoutes(app: FastifyInstance) {
 
     app.post('/', async (req) => {
         const {lessonPlanId, ...data} = req.body as any;
-        return Slides.create(lessonPlanId, data)
+        return Slides.createSlides(lessonPlanId, data)
     })
 }

@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { railwayS3 } from "./bucket";
+import { railwayS3, uploadMediaToBucket } from "./bucket";
 
 const execAsync = promisify(exec);
 
@@ -23,7 +23,9 @@ export class ManimService {
     }
   }
 
-  async generateVideo(code: string): Promise<{ id: string; key: string }> {
+  async generateVideo(
+    code: string
+  ): Promise<{ fileId: string; fileUrl: string; key: string }> {
     const id = `manim_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const pyFilePath = path.join(this.outputDir, `${id}.py`);
     const finalMp4Path = path.join(this.outputDir, `${id}.mp4`);
@@ -58,9 +60,13 @@ export class ManimService {
       await fs.promises.rename(expectedPath, finalMp4Path);
 
       // Upload to Railway Object Storage
-      const objectKey = await this.uploadToRailway(finalMp4Path, id);
+      const { fileId, fileUrl, key } = await uploadMediaToBucket({
+        localFilepath: finalMp4Path,
+        mimeType: "video/mp4",
+        folder: "videos",
+      });
 
-      return { id, key: objectKey };
+      return { fileId, fileUrl, key };
     } catch (err) {
       console.error("❌ Manim generation failed:", err);
       throw new Error("Failed to generate animation");
@@ -73,21 +79,5 @@ export class ManimService {
         force: true,
       });
     }
-  }
-
-  private async uploadToRailway(localPath: string, id: string): Promise<string> {
-    const fileStream = fs.createReadStream(localPath);
-    const key = `manim/${id}.mp4`;
-
-    await railwayS3.send(
-      new PutObjectCommand({
-        Bucket: "optimized-holster-aovy0bb",
-        Key: key,
-        Body: fileStream,
-        ContentType: "video/mp4",
-      })
-    );
-
-    return key;
   }
 }

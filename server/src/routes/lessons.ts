@@ -7,7 +7,7 @@ export default async function lessonRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authMiddleware);
 
   app.post('/', {preHandler: authMiddleware } , async (req: any) => {
-    return Lessons.create(req.body, req.user.id);
+    return Lessons.createLessons(req.body, req.user.id);
   })
 
   app.get('/', { preHandler: authMiddleware}, async (req: any) => {

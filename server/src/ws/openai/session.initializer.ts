@@ -1,15 +1,19 @@
 import { WebSocket } from "ws";
 import { tools } from "./tools.definition";
+import { createLessons, updateLessons } from "../../db/lessons";
 
 export function initializeSession(
   openAIWs: any,
   mode: "interview" | "tutor",
+  userId: string,
+  lessonPlanId: string,
   config?: any
 ) {
   const runInit = () => {
     let instructions = "";
 
     if (mode == "interview") {
+      // not handling for now.
       instructions = "You are a senior software engineer interviewer...";
     } else if (mode == "tutor") {
       const { topic, language, experience } = config;
@@ -31,8 +35,17 @@ export function initializeSession(
           
           Adjust depth for ${experience} level.
       `;
+      updateLessons(
+        {
+          gradeLevel: experience,
+          programmingLanguage: language,
+          topic: topic,
+          type: "CODING",
+        },
+        userId,
+        lessonPlanId
+      );
     }
-
     openAIWs.send({
       type: "session.update",
       session: {
@@ -53,6 +66,7 @@ export function initializeSession(
     });
 
     if (mode === "tutor") {
+      console.log("Sending initial message to llm.");
       openAIWs.send({
         type: "conversation.item.create",
         item: {

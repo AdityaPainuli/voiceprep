@@ -360,6 +360,7 @@ export default function TutorPage() {
                   />
                 );
               } else if (item.type === "code") {
+                console.log("Top level component: ", item.code);
                 return (
                   <CodeCard
                     key={item.id}

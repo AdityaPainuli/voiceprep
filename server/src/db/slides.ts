@@ -1,11 +1,18 @@
-import { Slide } from "@prisma/client";
 import { prisma } from "./client";
 
-export function create(lessonPlanId: string, data: Omit<Slide, 'lessonPlanId'>) {
-    return prisma.slide.create({
-        data: {
-            lessonPlanId,
-            ...data,
-        }
-    })
+interface CreateSlideInterface {
+  title: string;
+  order: number;
+  content: string;
+}
+// One slide can have multiple diagram,animation or video (need to think about it)?
+export function createSlides(lessonPlanId: string, data: CreateSlideInterface) {
+  return prisma.slide.create({
+    data: {
+      lessonPlanId,
+      title: data.title,
+      content: data.content,
+      type: "SLIDE",
+    },
+  });
 }

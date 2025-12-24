@@ -1,16 +1,16 @@
+import { ClientContext } from "../../types/client";
 import { handleToolCall } from "../tools/tool.router";
 import WebSocket from "ws";
 
 export async function handleOpenAIMessage(
   response: any,
   ws: WebSocket,
-  openAIWs: any
+  openAIWs: any,
+  ctx: ClientContext
 ) {
-
   if (response.type === "error") {
     console.error("❌ OpenAI error:", JSON.stringify(response, null, 2));
   }
-
 
   if (response.type === "session.updated") {
     console.log("Session updated successfully");
@@ -26,7 +26,7 @@ export async function handleOpenAIMessage(
 
   if (response.type === "response.function_call_arguments.done") {
     console.log("Tool called: ", JSON.stringify(response.name));
-    await handleToolCall(response, ws, openAIWs);
+    await handleToolCall(response, ws, openAIWs, ctx);
   }
 
   if (response.type === "input_audio_buffer.speech_started") {

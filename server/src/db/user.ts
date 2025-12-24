@@ -23,3 +23,31 @@ export function getUserById(userId: string) {
         }
     })
 }
+
+export function IncrementDiagram(userId: string) {
+    return prisma.user.update({
+        where: {
+            id: userId,
+        },
+        data: {
+            diagramsUsed: {
+                increment: 1
+            }
+        }
+    })
+}
+
+export function IncrementVideo(userId: string) {
+    return prisma.user.update({
+        where: {
+            id: userId
+        },
+        data: {
+            videosUsed: {
+                increment: 1,
+            }
+        }
+    })
+}
+
+// TODO: How to track credit balance, real-time minutes used and token used.

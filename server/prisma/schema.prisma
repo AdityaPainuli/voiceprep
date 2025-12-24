@@ -92,15 +92,47 @@ model LessonPlan {
 
   gradeLevel GradeLevel
 
-  // Only for CODING plans
   programmingLanguage ProgrammingLanguage?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  slides Slide[]
+  items LessonItem[]
+
+  slides     Slide[]
+  diagrams   Diagram[]
+  animations Animation[]
 
   @@index([userId])
+}
+
+enum LessonItemType {
+  SLIDE
+  DIAGRAM
+  ANIMATION
+}
+
+model LessonItem {
+  id           String     @id @default(uuid())
+  lessonPlanId String
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id])
+
+  type  LessonItemType
+  order Int
+
+  slideId     String?
+  diagramId   String?
+  animationId String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([lessonPlanId, order])
+  @@index([lessonPlanId])
+}
+
+enum SlideType {
+  NOTE
+  SLIDE
 }
 
 model Slide {
@@ -108,64 +140,44 @@ model Slide {
   lessonPlanId String
   lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id])
 
-  title   String
-  order   Int
-  content String?
+  title        String
+  content      String?
+  bulletPoints Json?
+  tags         String[]
+  type         SlideType
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  diagrams   Diagram[]
-  animations Animation[]
-  videos     Video[]
-
-  @@unique([lessonPlanId, order])
-  @@index([lessonPlanId])
 }
 
 model Diagram {
-  id      String @id @default(uuid())
-  slideId String
-  slide   Slide  @relation(fields: [slideId], references: [id])
+  id           String     @id @default(uuid())
+  lessonPlanId String
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id])
 
-  type     DiagramType
-  prompt   String?
-  fileUrl  String?
-  metadata Json?
+  fileId      String?
+  type        DiagramType
+  title       String
+  description String
+  code        String
+  metaData    Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([slideId])
 }
 
 model Animation {
-  id      String @id @default(uuid())
-  slideId String
-  slide   Slide  @relation(fields: [slideId], references: [id])
+  id           String     @id @default(uuid())
+  lessonPlanId String
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id])
 
-  fileId   String  @unique
-  fileUrl  String?
-  metadata Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([slideId])
-}
-
-model Video {
-  id      String @id @default(uuid())
-  slideId String
-  slide   Slide  @relation(fields: [slideId], references: [id])
-
-  prompt   String?
-  fileUrl  String?
-  duration Int?
-  metadata Json?
+  fileId      String
+  fileUrl     String
+  metaData    Json?
+  description String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([slideId])
 }
+
+// Add model for saving coding questions 
