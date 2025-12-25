@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import ChartVisualizer from "./ChartVisualizer";
 import MermaidDiagram from "./MermaidDiagram";
 import CodeEditor from "./CodeEditor";
+import { useEffect, useRef } from "react";
 
 interface NoteCardProps {
   title: string;
@@ -135,6 +136,17 @@ export const VisualCard: React.FC<VisualCardProps> = ({
   description,
   onExpand,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 🔥 Force resize after mount (fixes blank render)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="bg-[#161b22] rounded-xl border border-gray-800 p-6 shadow-lg mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
@@ -151,52 +163,54 @@ export const VisualCard: React.FC<VisualCardProps> = ({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="3" y1="9" x2="21" y2="9"></line>
-              <line x1="9" y1="21" x2="9" y2="9"></line>
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <line x1="3" y1="9" x2="21" y2="9" />
+              <line x1="9" y1="21" x2="9" y2="9" />
             </svg>
           </span>
           {title || "Visual Explanation"}
         </h3>
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs font-medium rounded-full border border-purple-500/20 uppercase">
-            {type === "mermaid" ? "Diagram" : `${type} Chart`}
-          </span>
-          {onExpand && (
-            <button
-              onClick={onExpand}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition-colors"
-              title="Maximize"
+
+        {onExpand && (
+          <button
+            onClick={onExpand}
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition-colors"
+            title="Maximize"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <polyline points="9 21 3 21 3 15"></polyline>
-                <line x1="21" y1="3" x2="14" y2="10"></line>
-                <line x1="3" y1="21" x2="10" y2="14"></line>
-              </svg>
-            </button>
-          )}
-        </div>
+              <polyline points="15 3 21 3 21 9" />
+              <polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" />
+              <line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+          </button>
+        )}
       </div>
+
+      {/* CHART CONTAINER */}
       <div
-        className={`w-full bg-black/20 rounded-lg p-4 border border-gray-800/50 ${
-          type === "mermaid" ? "min-h-[200px]" : "h-[400px]"
-        }`}
+        className={`relative w-full bg-black/20 rounded-lg border border-gray-800/50 
+  ${type === "mermaid" ? "min-h-[400px]" : "h-[400px]"}
+  overflow-auto p-8`}
       >
         {type === "mermaid" ? (
-          <MermaidDiagram chart={data.code || data} />
+          <MermaidDiagram
+            key={`mermaid-${JSON.stringify(data).length}`}
+            chart={data.code || data}
+          />
         ) : (
           <ChartVisualizer
+            key={`chart-${type}-${JSON.stringify(data).length}`}
             type={type}
             data={data}
             title=""
@@ -204,6 +218,7 @@ export const VisualCard: React.FC<VisualCardProps> = ({
           />
         )}
       </div>
+
       {description && (
         <div className="mt-4 text-sm text-gray-400 bg-gray-800/30 p-3 rounded-lg border border-gray-800/50">
           {description}
