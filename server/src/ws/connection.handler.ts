@@ -17,6 +17,7 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
     activeStart: null,
     lastActivityAt: null,
     interval: null,
+    totalActiveMs: 0,
   };
 
   // 🔑 1. Message buffer (very important)
@@ -95,35 +96,41 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
     if (!session.activeStart || !session.lastActivityAt) return;
 
     const now = Date.now();
-    const idleMs = now - session.lastActivityAt;
+    const elapsed = now - session.lastActivityAt;
 
-    if (idleMs > 4000) {
-      const durationMs = now - session.activeStart;
-      const minutes = Math.ceil(durationMs / 60000);
+    if (elapsed > 4000) {
+      const activeChunk = now - session.activeStart;
+      session.totalActiveMs += activeChunk;
 
-      console.log("⏱️ Realtime session ended:", minutes, "minutes");
+      const minutes = Math.floor(session.totalActiveMs / 60000);
 
-      await prisma.$transaction([
-        prisma.usageEvent.create({
-          data: {
-            userId: ctx!.userId,
-            type: "REALTIME_MINUTE",
-            amount: minutes,
-            metadata: { durationMs },
-          },
-        }),
+      if (minutes > 0) {
+        await prisma.$transaction([
+          prisma.usageEvent.create({
+            data: {
+              userId: ctx.userId,
+              type: "REALTIME_MINUTE",
+              amount: minutes,
+              metadata: {
+                totalMs: session.totalActiveMs,
+              },
+            },
+          }),
+          prisma.usageSummary.upsert({
+            where: { userId: ctx.userId },
+            create: {
+              userId: ctx.userId,
+              realtimeMinutes: minutes,
+            },
+            update: {
+              realtimeMinutes: { increment: minutes },
+            },
+          }),
+        ]);
 
-        prisma.usageSummary.upsert({
-          where: { userId: ctx.userId },
-          create: {
-            userId: ctx.userId,
-            realtimeMinutes: minutes,
-          },
-          update: {
-            realtimeMinutes: { increment: minutes },
-          },
-        }),
-      ]);
+        // subtract accounted time
+        session.totalActiveMs -= minutes * 60000;
+      }
 
       session.activeStart = null;
       session.lastActivityAt = null;

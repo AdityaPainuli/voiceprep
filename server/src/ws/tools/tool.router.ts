@@ -105,9 +105,13 @@ export async function handleToolCall(
           },
         });
 
-        await tx.usageSummary.update({
+        await tx.usageSummary.upsert({
           where: { userId: ctx.userId },
-          data: { diagrams: { increment: 1 } },
+          create: {
+            userId: ctx.userId,
+            diagrams: 1,
+          },
+          update: { diagrams: { increment: 1 } },
         });
         return diagram;
       });
@@ -218,6 +222,14 @@ export async function handleToolCall(
           },
         });
 
+        await tx.usageSummary.upsert({
+          where: { userId: ctx.userId },
+          create: {
+            userId: ctx.userId,
+            videos: 1,
+          },
+          update: { videos: { increment: 1 } },
+        });
         return animation;
       });
       ws.send(
