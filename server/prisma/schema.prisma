@@ -61,6 +61,14 @@ enum DiagramType {
   CUSTOM
 }
 
+enum UsageType {
+  REALTIME_MINUTE
+  DIAGRAM_GENERATED
+  VIDEO_GENERATED
+  TOKEN_USED
+  CODE_EXECUTED
+}
+
 model User {
   id       String   @id @default(uuid())
   email    String   @unique
@@ -68,17 +76,44 @@ model User {
   name     String?
   plan     UserPlan @default(TRIAL)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  realtimeMinutesUsed Int @default(0)
-  diagramsUsed        Int @default(0)
-  videosUsed          Int @default(0)
-  tokensUsed          Int @default(0)
-
   creditBalance Float @default(0)
 
+  // Aggregates (fast reads)
+  usageSummary UsageSummary?
+
   lessonPlans LessonPlan[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  usageEvents UsageEvent[]
+}
+
+model UsageSummary {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  realtimeMinutes Int @default(0)
+  diagrams        Int @default(0)
+  videos          Int @default(0)
+  tokens          Int @default(0)
+
+  updatedAt DateTime @updatedAt
+}
+
+model UsageEvent {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  type     UsageType
+  amount   Int
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
 }
 
 model LessonPlan {

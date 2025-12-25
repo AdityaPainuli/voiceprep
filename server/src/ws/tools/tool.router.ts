@@ -92,6 +92,23 @@ export async function handleToolCall(
             diagramId: diagram.id,
           },
         });
+
+        await tx.usageEvent.create({
+          data: {
+            userId: ctx.userId,
+            type: "DIAGRAM_GENERATED",
+            amount: 1,
+            metadata: {
+              lessonPlanId: ctx.lessonPlanId,
+              diagram_type: "mermaid",
+            },
+          },
+        });
+
+        await tx.usageSummary.update({
+          where: { userId: ctx.userId },
+          data: { diagrams: { increment: 1 } },
+        });
         return diagram;
       });
       ws.send(
@@ -188,6 +205,19 @@ export async function handleToolCall(
             animationId: animation.id,
           },
         });
+
+        await tx.usageEvent.create({
+          data: {
+            userId: ctx.userId,
+            type: "VIDEO_GENERATED",
+            amount: 1,
+            metadata: {
+              lessonPlanId: ctx.lessonPlanId,
+              source: "manim",
+            },
+          },
+        });
+
         return animation;
       });
       ws.send(

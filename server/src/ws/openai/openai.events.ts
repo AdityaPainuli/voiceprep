@@ -1,4 +1,5 @@
-import { ClientContext } from "../../types/client";
+import { prisma } from "../../db/client";
+import { ClientContext, RealtimeSessionState } from "../../types/client";
 import { handleToolCall } from "../tools/tool.router";
 import WebSocket from "ws";
 
@@ -6,7 +7,8 @@ export async function handleOpenAIMessage(
   response: any,
   ws: WebSocket,
   openAIWs: any,
-  ctx: ClientContext
+  ctx: ClientContext,
+  session: RealtimeSessionState
 ) {
   if (response.type === "error") {
     console.error("❌ OpenAI error:", JSON.stringify(response, null, 2));
@@ -16,6 +18,8 @@ export async function handleOpenAIMessage(
     console.log("Session updated successfully");
   }
   if (response.type === "response.audio.delta") {
+    if (!session.activeStart) session.activeStart = Date.now();
+    session.lastActivityAt = Date.now();
     ws.send(
       JSON.stringify({
         event: "media",
@@ -30,6 +34,8 @@ export async function handleOpenAIMessage(
   }
 
   if (response.type === "input_audio_buffer.speech_started") {
+    if (!session.activeStart) session.activeStart = Date.now();
+    session.lastActivityAt = Date.now();
     ws.send(JSON.stringify({ type: "speech_started" }));
   }
 
