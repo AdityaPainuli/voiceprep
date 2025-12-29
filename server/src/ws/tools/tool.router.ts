@@ -3,6 +3,7 @@ import { getNextLessonItemOrder } from "../../db/helper";
 import { ManimService } from "../../services/ManimService";
 import WebSocket from "ws";
 import { ClientContext } from "../../types/client";
+import { assertusageAllowed } from "../../services/usage.guard";
 
 const manim = new ManimService();
 // TODO: Save all the generation it will make moving forward.  + usage metering
@@ -12,13 +13,12 @@ export async function handleToolCall(
   openAIWs: any,
   ctx: ClientContext
 ) {
-  let args: any;
-  try {
-    args = JSON.parse(response.arguments);
-  } catch (e) {
-    console.log(response.arguments);
-  }
-
+  const args =
+    typeof response.arguments === "string"
+      ? JSON.parse(response.arguments)
+      : response.arguments;
+  console.log(response.name);
+  console.log(response.arguments);
   switch (response.name) {
     case "post_question":
       // TODO: save to db (maybe later.)
@@ -71,6 +71,16 @@ export async function handleToolCall(
       );
       break;
     case "generate_diagram":
+      try {
+        await assertusageAllowed(ctx.userId, "DIAGRAM");
+      } catch (e: any) {
+        ws.send(
+          JSON.stringify({
+            type: "limit_reached",
+            reason: e,
+          })
+        );
+      }
       await prisma.$transaction(async (tx) => {
         const order = await getNextLessonItemOrder(ctx.lessonPlanId);
         const diagram = await tx.diagram.create({
@@ -189,6 +199,16 @@ export async function handleToolCall(
       break;
 
     case "generate_animation":
+      try {
+        await assertusageAllowed(ctx.userId, "VIDEO");
+      } catch (e: any) {
+        ws.send(
+          JSON.stringify({
+            type: "limit_reached",
+            reason: e,
+          })
+        );
+      }
       const { fileId, fileUrl, key } = await manim.generateVideo(args.code);
       await prisma.$transaction(async (tx) => {
         const order = await getNextLessonItemOrder(ctx.lessonPlanId);

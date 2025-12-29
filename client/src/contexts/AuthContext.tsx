@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (!res.ok) throw new Error("unauthorized");
 
-      const {user} = await res.json();
+      const { user } = await res.json();
       setUser(user);
     } catch {
       logout();
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setToken(data.token);
 
     await fetchUser(data.token);
-    router.push("/dashboard");
+    router.push("/");
   };
 
   const register = async (email: string, password: string) => {
@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setToken(data.token);
 
     await fetchUser(data.token);
-    router.push("/dashboard");
+    router.push("/");
   };
 
   const logout = () => {

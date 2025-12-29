@@ -1,7 +1,7 @@
 import { ClientContext } from "../types/client";
 import { initializeSession } from "./openai/session.initializer";
 
-export function handleClientMessage(
+export async function handleClientMessage(
   raw: string,
   ws: any,
   openAI: any,
@@ -10,8 +10,7 @@ export function handleClientMessage(
   const data = JSON.parse(raw);
   switch (data.type) {
     case "init_session":
-      console.log("Got here");
-      initializeSession(
+      await initializeSession(
         openAI,
         data.mode,
         data.userId,

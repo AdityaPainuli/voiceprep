@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { floatTo16BitPCM, base64ToFloat32Array } from "../utils/audio";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type LearningItem =
   | {
@@ -34,7 +36,9 @@ export type LearningItem =
       code?: string;
     };
 
-export const useVoiceAgent = (token: string) => {
+export const useVoiceAgent = () => {
+  const { token, loading } = useAuth();
+  console.log(token, loading);
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [status, setStatus] = useState("Disconnected");
   const [question, setQuestion] = useState<string | null>(null);
@@ -96,6 +100,11 @@ export const useVoiceAgent = (token: string) => {
 
   const startSession = useCallback(
     (mode: "interview" | "tutor", config?: any) => {
+      if (loading) {
+        console.log("Loading...");
+        return;
+      }
+      console.log(token);
       if (!token) {
         console.error("No token provided");
         return;
@@ -277,6 +286,12 @@ export const useVoiceAgent = (token: string) => {
               },
             ]);
           }
+
+          if (data.type === "limit_reached") {
+            toast.error("You've reached your usage limit for this plan.");
+            setIsSessionActive(false);
+            ws.close();
+          }
         };
 
         ws.onclose = () => {
@@ -296,7 +311,7 @@ export const useVoiceAgent = (token: string) => {
         setStatus("Error");
       }
     },
-    []
+    [loading, token, BASE_WS]
   );
 
   const stopSession = useCallback(() => {

@@ -43,7 +43,7 @@ enum ProgrammingLanguage {
 }
 
 enum GradeLevel {
-  BEGINEER
+  BEGINNER
   INTERMEDIATE
   EXPERIENCE
 }

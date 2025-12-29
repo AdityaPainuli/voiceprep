@@ -6,6 +6,8 @@ import "dotenv/config";
 import { prisma } from "../db/client";
 import { resolveUserId } from "../middleware/auth";
 import { ClientContext, RealtimeSessionState } from "../types/client";
+import { assertusageAllowed } from "../services/usage.guard";
+import { GradeLevel } from "@prisma/client";
 
 export async function handleWsConnection(ws: WebSocket, req: any) {
   console.log("🔗 Client connected");
@@ -27,7 +29,7 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
   let isInitialized = false;
 
   // ✅ 2. Attach WS handler immediately
-  ws.on("message", (raw) => {
+  ws.on("message", async (raw) => {
     const msg = raw.toString();
 
     // Buffer until ctx is ready
@@ -48,12 +50,25 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
       return;
     }
 
-    handleClientMessage(msg, ws, openAI, ctx);
+    await handleClientMessage(msg, ws, openAI, ctx);
   });
 
   /* ---------------- ASYNC SETUP ---------------- */
 
   const userId = await resolveUserId(req);
+
+  try {
+    await assertusageAllowed(userId, "REALTIME");
+  } catch (e: any) {
+    ws.send(
+      JSON.stringify({
+        type: "limit_reached",
+        reason: e.message,
+      })
+    );
+    ws.close();
+    return;
+  }
 
   const url = new URL(req.url, `http://${req.headers.host}`);
   let lessonPlanId = url.searchParams.get("lessonPlanId");
@@ -75,7 +90,7 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
         userId,
         type: "CODING",
         topic: "Untitled lesson",
-        gradeLevel: "BEGINEER",
+        gradeLevel: GradeLevel.BEGINNER,
       },
     });
 
@@ -89,28 +104,42 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
     );
   }
 
-  // ✅ 3. Context is now ready
   ctx = { userId, lessonPlanId };
 
   session.interval = setInterval(async () => {
     if (!session.activeStart || !session.lastActivityAt) return;
 
     const now = Date.now();
-    const elapsed = now - session.lastActivityAt;
+    const idleMs = now - session.lastActivityAt;
 
-    if (elapsed > 4000) {
-      const activeChunk = now - session.activeStart;
-      session.totalActiveMs += activeChunk;
+    // If user stopped speaking
+    if (idleMs > 4000) {
+      const activeMs = session.lastActivityAt - session.activeStart;
 
-      const minutes = Math.floor(session.totalActiveMs / 60000);
+      session.totalActiveMs += activeMs;
 
-      if (minutes > 0) {
+      const billableMinutes = Math.floor(session.totalActiveMs / 60000);
+
+      if (billableMinutes > 0) {
+        try {
+          await assertusageAllowed(ctx.userId, "REALTIME", billableMinutes);
+        } catch (e: any) {
+          ws.send(
+            JSON.stringify({
+              type: "limit_reached",
+              reason: "Realtime usage limit exceeded",
+            })
+          );
+          openAI.close();
+          ws.close();
+          return;
+        }
         await prisma.$transaction([
           prisma.usageEvent.create({
             data: {
               userId: ctx.userId,
               type: "REALTIME_MINUTE",
-              amount: minutes,
+              amount: billableMinutes,
               metadata: {
                 totalMs: session.totalActiveMs,
               },
@@ -120,18 +149,19 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
             where: { userId: ctx.userId },
             create: {
               userId: ctx.userId,
-              realtimeMinutes: minutes,
+              realtimeMinutes: billableMinutes,
             },
             update: {
-              realtimeMinutes: { increment: minutes },
+              realtimeMinutes: { increment: billableMinutes },
             },
           }),
         ]);
 
-        // subtract accounted time
-        session.totalActiveMs -= minutes * 60000;
+        // subtract billed time
+        session.totalActiveMs -= billableMinutes * 60000;
       }
 
+      // reset activity window
       session.activeStart = null;
       session.lastActivityAt = null;
     }
@@ -149,7 +179,7 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
       continue;
     }
 
-    handleClientMessage(msg, ws, openAI, ctx);
+    await handleClientMessage(msg, ws, openAI, ctx);
   }
 
   messageQueue.length = 0;
@@ -163,24 +193,31 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
 
     if (session.interval) clearInterval(session.interval);
 
-    if (session.activeStart && session.lastActivityAt && ctx) {
-      const durationMs = Date.now() - session.activeStart;
-      const minutes = Math.ceil(durationMs / 60000);
+    if (session.totalActiveMs > 0) {
+      const minutes = Math.floor(session.totalActiveMs / 60000);
 
-      await prisma.$transaction([
-        prisma.usageEvent.create({
-          data: {
-            userId: ctx.userId,
-            type: "REALTIME_MINUTE",
-            amount: minutes,
-            metadata: { durationMs, reason: "disconnect" },
-          },
-        }),
-        prisma.usageSummary.update({
-          where: { userId: ctx.userId },
-          data: { realtimeMinutes: { increment: minutes } },
-        }),
-      ]);
+      if (minutes > 0) {
+        await prisma.$transaction([
+          prisma.usageEvent.create({
+            data: {
+              userId: ctx.userId,
+              type: "REALTIME_MINUTE",
+              amount: minutes,
+              metadata: { reason: "disconnect" },
+            },
+          }),
+          prisma.usageSummary.upsert({
+            where: { userId: ctx.userId },
+            create: {
+              userId: ctx.userId,
+              realtimeMinutes: minutes,
+            },
+            update: {
+              realtimeMinutes: { increment: minutes },
+            },
+          }),
+        ]);
+      }
     }
 
     openAI.close();

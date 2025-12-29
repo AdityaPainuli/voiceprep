@@ -1,49 +1,6 @@
 export const tools = [
   {
     type: "function",
-    name: "post_question",
-    description:
-      "Post a technical interview question or a coding exercise to the candidate's screen with test cases.",
-    parameters: {
-      type: "object",
-      properties: {
-        question: {
-          type: "string",
-          description: "The text of the question or exercise to display.",
-        },
-        testCases: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              input: { type: "string" },
-              expectedOutput: { type: "string" },
-            },
-          },
-          description: "Array of test cases (input/output pairs).",
-        },
-      },
-      required: ["question", "testCases"],
-    },
-  },
-  {
-    type: "function",
-    name: "mark_question_solved",
-    description:
-      "Mark the current question as solved when the candidate provides a correct solution.",
-    parameters: {
-      type: "object",
-      properties: {
-        feedback: {
-          type: "string",
-          description: "Brief feedback on the solution.",
-        },
-      },
-      required: ["feedback"],
-    },
-  },
-  {
-    type: "function",
     name: "provide_code_correction",
     description:
       "Provide a corrected version of the candidate's code, or show a code example.",
@@ -236,6 +193,52 @@ export const tools = [
         },
       },
       required: ["code", "title"],
+    },
+  },
+];
+
+export const notUsedTools = [
+  {
+    type: "function",
+    name: "post_question",
+    description:
+      "Post a technical interview question or a coding exercise to the candidate's screen with test cases.",
+    parameters: {
+      type: "object",
+      properties: {
+        question: {
+          type: "string",
+          description: "The text of the question or exercise to display.",
+        },
+        testCases: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              input: { type: "string" },
+              expectedOutput: { type: "string" },
+            },
+          },
+          description: "Array of test cases (input/output pairs).",
+        },
+      },
+      required: ["question", "testCases"],
+    },
+  },
+  {
+    type: "function",
+    name: "mark_question_solved",
+    description:
+      "Mark the current question as solved when the candidate provides a correct solution.",
+    parameters: {
+      type: "object",
+      properties: {
+        feedback: {
+          type: "string",
+          description: "Brief feedback on the solution.",
+        },
+      },
+      required: ["feedback"],
     },
   },
 ];
