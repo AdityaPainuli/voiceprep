@@ -1,10 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+interface UsageSummary {
+  lessonPlans: number;
+  creditBalance: number;
+  name: string;
+  plan: string;
+  usage_summary: {
+    diagram_used: number;
+    realtimeMinutes: number;
+    videos_used: number;
+  };
+}
+
+interface LessonsInterface {
+  id: string;
+  topic: string;
+  type: string;
+  gradeLevel: string;
+  programmingLanguage: string;
+  domain: string;
+  slides: any[];
+}
 
 export default function Home() {
-  const [user] = useState({ name: "Sarah Chen", email: "sarah@example.com" });
-  const [loading] = useState(false);
+  const { loading, user } = useAuth();
+  const [usageSummary, setUsageSummary] = useState<UsageSummary>();
+  const [lessons, setLessons] = useState<LessonsInterface[]>([]);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!user && !loading) {
+      router.push("/login");
+      return;
+    }
+    console.log(user);
+    const fetchusage = async () => {
+      const resp = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/usage-summary`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          method: "GET",
+        }
+      );
+      const data = await resp.json();
+      setUsageSummary(data);
+    };
+
+    const fetchLessons = async () => {
+      const resp = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/lessons`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          method: "GET",
+        }
+      );
+      const data = await resp.json();
+      setLessons(data);
+    };
+    fetchusage();
+    fetchLessons();
+  }, [loading, user]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -30,7 +95,10 @@ export default function Home() {
           )}
 
           {!loading && user && (
-            <div className="flex items-center gap-4">
+            <div
+              className="flex items-center gap-4 cursor-pointer"
+              onClick={(e) => router.push("/dashboard")}
+            >
               <div className="text-right">
                 <div className="text-sm font-medium text-white">
                   {user.name}
@@ -83,13 +151,15 @@ export default function Home() {
                 </svg>
               </div>
             </div>
-            <div className="text-3xl font-bold text-white">12</div>
+            <div className="text-3xl font-bold text-white">
+              {usageSummary?.lessonPlans}
+            </div>
           </div>
 
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-gray-400 text-sm font-medium">
-                Hours Practiced
+                Real-time minutes used
               </span>
               <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
                 <svg
@@ -107,13 +177,15 @@ export default function Home() {
                 </svg>
               </div>
             </div>
-            <div className="text-3xl font-bold text-white">8.5</div>
+            <div className="text-3xl font-bold text-white">
+              {usageSummary?.usage_summary.realtimeMinutes}
+            </div>
           </div>
 
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-gray-400 text-sm font-medium">
-                Avg. Score
+                Current Plan
               </span>
               <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
                 <svg
@@ -131,7 +203,9 @@ export default function Home() {
                 </svg>
               </div>
             </div>
-            <div className="text-3xl font-bold text-white">85%</div>
+            <div className="text-3xl font-bold text-white">
+              {usageSummary?.plan}
+            </div>
           </div>
         </div>
 
@@ -314,80 +388,41 @@ export default function Home() {
           </h3>
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6">
             <div className="space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-gray-700/30 rounded-lg">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="w-5 h-5 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <div className="text-white font-medium">
-                    Completed React Hooks Tutorial
+              {lessons.map((lesson) => (
+                <div
+                  key={lesson.id}
+                  className="flex items-center hover:scale-[102%] transition-all ease-in-out  hover:bg-gray-800 gap-4 p-4 bg-gray-700/30 rounded-lg"
+                >
+                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg
+                      className="w-5 h-5 text-purple-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                      />
+                    </svg>
                   </div>
-                  <div className="text-gray-400 text-sm">2 hours ago</div>
-                </div>
-                <div className="text-green-400 font-semibold">92%</div>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 bg-gray-700/30 rounded-lg">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="w-5 h-5 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <div className="text-white font-medium">
-                    Practiced TypeScript Generics
+                  <div className="flex-1">
+                    <div className="text-white font-medium">{lesson.topic}</div>
+                    <div className="text-gray-400 text-sm">
+                      {lesson.type} | {lesson.programmingLanguage} |{" "}
+                      {lesson.gradeLevel}
+                    </div>
                   </div>
-                  <div className="text-gray-400 text-sm">Yesterday</div>
-                </div>
-                <div className="text-green-400 font-semibold">88%</div>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 bg-gray-700/30 rounded-lg">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="w-5 h-5 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                  <button
+                    className="text-green-400 font-semibold cursor-pointer"
+                    onClick={() => router.push(`/tutor?lessonId=${lesson.id}`)}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                    Revise again
+                  </button>
                 </div>
-                <div className="flex-1">
-                  <div className="text-white font-medium">
-                    Finished API Design Session
-                  </div>
-                  <div className="text-gray-400 text-sm">3 days ago</div>
-                </div>
-                <div className="text-green-400 font-semibold">95%</div>
-              </div>
+              ))}
             </div>
           </div>
         </div>

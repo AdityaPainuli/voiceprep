@@ -28,6 +28,7 @@ const LANGUAGES = [
   { id: "java", name: "Java" },
   { id: "cpp", name: "C++" },
   { id: "go", name: "Go" },
+  { id: "plaintext", name: "plaintext" },
 ];
 
 const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -47,7 +48,6 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   output,
   isError = false,
 }) => {
-  console.log("Inside final component", value);
   return (
     <div className="h-full w-full bg-[#1e1e1e] border-l border-gray-700 flex flex-col">
       <div className="h-12 bg-[#252526] flex items-center justify-between px-4 border-b border-gray-700 shrink-0">

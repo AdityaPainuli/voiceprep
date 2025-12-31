@@ -84,6 +84,7 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
     }
   }
 
+  // Creating first.
   if (!lessonPlanId) {
     const lessonPlan = await prisma.lessonPlan.create({
       data: {
@@ -93,6 +94,7 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
         gradeLevel: GradeLevel.BEGINNER,
       },
     });
+    console.log("Lesson PLan created -> ", lessonPlan);
 
     lessonPlanId = lessonPlan.id;
 

@@ -112,16 +112,19 @@ export const tools = [
     type: "function",
     name: "generate_diagram",
     description:
-      "Generate a structural diagram using Mermaid.js for CONCEPTS, FLOWS, and DATA STRUCTURES (e.g., Linked Lists, Trees, Graphs, Class Diagrams, Flowcharts).",
+      "Generate a Mermaid.js diagram. All node labels MUST be wrapped in double quotes to ensure parser safety.",
     parameters: {
       type: "object",
       properties: {
         code: {
           type: "string",
           description:
-            "The Mermaid.js syntax string. Do not include markdown backticks.",
+            'Mermaid.js syntax string. Node labels must be quoted (e.g., A["My Label"]). Do not include markdown backticks.',
         },
-        title: { type: "string", description: "Title of the diagram." },
+        title: {
+          type: "string",
+          description: "Title of the diagram.",
+        },
         description: {
           type: "string",
           description: "Brief description of what the diagram shows.",

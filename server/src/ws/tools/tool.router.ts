@@ -13,12 +13,17 @@ export async function handleToolCall(
   openAIWs: any,
   ctx: ClientContext
 ) {
-  const args =
-    typeof response.arguments === "string"
-      ? JSON.parse(response.arguments)
-      : response.arguments;
+  let args: any;
+  try {
+    args =
+      typeof response.arguments === "string"
+        ? JSON.parse(response.arguments)
+        : response.arguments;
+  } catch (e) {
+    console.error("Error occurred: ", e);
+    console.log("Response body: ", response);
+  }
   console.log(response.name);
-  console.log(response.arguments);
   switch (response.name) {
     case "post_question":
       // TODO: save to db (maybe later.)

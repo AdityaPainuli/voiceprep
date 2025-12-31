@@ -12,7 +12,7 @@ import MermaidDiagram from "@/components/MermaidDiagram";
 import VoiceAgent from "@/components/VoiceAgent";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVoiceAgent } from "@/hooks/useVoiceAgent";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
 export default function TutorPage() {
@@ -20,6 +20,9 @@ export default function TutorPage() {
   const router = useRouter();
   const [setupComplete, setSetupComplete] = useState(false);
   const [tutorType, setTutorType] = useState<"general" | "coding" | null>(null);
+
+  const searchParams = useSearchParams();
+  const lessonId = searchParams.get("lessonId");
 
   const [config, setConfig] = useState({
     topic: "",
@@ -41,7 +44,24 @@ export default function TutorPage() {
     runCode,
     sendMessage,
     updateLearningItem,
+    loadLessonPlan,
   } = useVoiceAgent();
+
+  useEffect(() => {
+    if (!lessonId) return;
+
+    const load = async () => {
+      const result = await loadLessonPlan(lessonId);
+
+      if (result?.config) {
+        setConfig(result.config);
+        setTutorType(result.config.domain ? "general" : "coding");
+        setSetupComplete(true);
+        console.log(learningStream);
+      }
+    };
+    load();
+  }, [lessonId]);
 
   const [expandedItem, setExpandedItem] = useState<any>(null);
   const streamEndRef = useRef<HTMLDivElement>(null);
@@ -492,6 +512,7 @@ export default function TutorPage() {
         <div className="flex-1 border-b border-gray-700">
           <VoiceAgent
             isSessionActive={isSessionActive}
+            pastSession={lessonId ? true : false}
             status={status}
             startSession={handleSessionStart}
             stopSession={stopSession}
@@ -839,7 +860,8 @@ export default function TutorPage() {
               } else if (item.type === "visual") {
                 return (
                   <VisualCard
-                    key={item.id}
+                    key={`${item.id}-${item.data.length}`}
+                    id={item.id}
                     type={item.chartType}
                     data={item.data}
                     title={item.title}
@@ -856,7 +878,6 @@ export default function TutorPage() {
                   />
                 );
               } else if (item.type === "code") {
-                console.log("Top level component: ", item.code);
                 return (
                   <CodeCard
                     key={item.id}

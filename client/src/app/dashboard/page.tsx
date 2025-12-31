@@ -8,22 +8,22 @@ const PLANS = [
   {
     name: "TRIAL",
     price: "free",
-    limits: "60 mins, 100 diagrams, 3 videos, unlimited lesson plans",
+    limits: "5 mins, 20 diagrams, 3 videos, unlimited lesson plans",
   },
   {
     name: "PRO",
     price: "$30/mo",
-    limits: "240 mins, Unlimited diagrams, 20 videos, unlimited lesson plans",
+    limits: "50 mins, 20 videos, unlimited lesson lesson plans & diagrams",
   },
   {
     name: "BASIC",
     price: "$50/mo",
-    limits: "400 mins, Unlimited diagrams, 40 videos, unlimited lesson plans",
+    limits: "100 mins, 40 videos, unlimited lesson plans & diagrams",
   },
   {
     name: "UNLIMITED",
-    price: "$100/mo",
-    limits: "800 mins, Unlimited everything",
+    price: "$80/mo",
+    limits: "300 mins, Unlimited everything",
   },
 ];
 
@@ -244,6 +244,14 @@ export default function DashboardPage() {
                 className="block w-full bg-blue-600 hover:bg-blue-700 text-center py-3 rounded-lg font-bold transition-colors"
               >
                 Go to AI Tutor
+              </Link>
+            </div>
+            <div className="mt-6">
+              <Link
+                href="/"
+                className="block w-full bg-green-600 hover:bg-green-700 text-center py-3 rounded-lg font-bold transition-colors"
+              >
+                Go to Home Page
               </Link>
             </div>
           </div>

@@ -13,7 +13,8 @@ export async function authMiddleware(req: any, reply: any) {
   try {
     const decoded = verifyToken(token);
     req.user = decoded;
-  } catch {
+  } catch (e) {
+    console.error("[AuthMiddleWare] Error: ", e);
     return reply.status(401).send({ error: "invalid_token" });
   }
 }

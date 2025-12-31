@@ -38,7 +38,6 @@ export type LearningItem =
 
 export const useVoiceAgent = () => {
   const { token, loading } = useAuth();
-  console.log(token, loading);
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [status, setStatus] = useState("Disconnected");
   const [question, setQuestion] = useState<string | null>(null);
@@ -52,6 +51,34 @@ export const useVoiceAgent = () => {
     "idle" | "listening" | "thinking" | "speaking"
   >("idle");
   const isSubmittingRef = useRef(false);
+
+  const loadLessonPlan = useCallback(
+    async (lessonId: string) => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/lessons/${lessonId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        if (!res.ok) throw new Error("Failed to load lessons");
+
+        const data = await res.json();
+        console.log(data);
+        setLearningStream(() => data.learningStream || []);
+
+        return {
+          config: data.config,
+        };
+      } catch (err) {
+        console.error("Failed to load lesson:", err);
+        return null;
+      }
+    },
+    [token]
+  );
 
   useEffect(() => {
     isSubmittingRef.current = isSubmitting;
@@ -101,10 +128,8 @@ export const useVoiceAgent = () => {
   const startSession = useCallback(
     (mode: "interview" | "tutor", config?: any) => {
       if (loading) {
-        console.log("Loading...");
         return;
       }
-      console.log(token);
       if (!token) {
         console.error("No token provided");
         return;
@@ -117,7 +142,6 @@ export const useVoiceAgent = () => {
         wsRef.current = ws;
 
         ws.onopen = () => {
-          console.log("In here..");
           setStatus("Connected");
           setIsSessionActive(true);
 
@@ -168,7 +192,6 @@ export const useVoiceAgent = () => {
           }
 
           if (data.type === "correction") {
-            console.log("Coming from backend now: ", data.correctionCode);
             setCorrectedCode(data.correctionCode);
             setIsSubmitting(false);
 
@@ -314,10 +337,13 @@ export const useVoiceAgent = () => {
     [loading, token, BASE_WS]
   );
 
-  const stopSession = useCallback(() => {
+  const stopSession = useCallback((clear = false) => {
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
+    }
+    if (clear) {
+      setLearningStream([]);
     }
     stopAudio();
     setIsSessionActive(false);
@@ -329,7 +355,6 @@ export const useVoiceAgent = () => {
     setIsRunning(false);
     setAgentState("idle");
     setVisualization(null);
-    setLearningStream([]);
     setExecutionStates({});
   }, []);
 
@@ -531,5 +556,6 @@ export const useVoiceAgent = () => {
     learningStream,
     sendMessage,
     updateLearningItem,
+    loadLessonPlan,
   };
 };

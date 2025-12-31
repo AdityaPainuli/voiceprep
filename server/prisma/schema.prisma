@@ -91,7 +91,7 @@ model User {
 model UsageSummary {
   id     String @id @default(uuid())
   userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   realtimeMinutes Int @default(0)
   diagrams        Int @default(0)
@@ -104,7 +104,7 @@ model UsageSummary {
 model UsageEvent {
   id     String @id @default(uuid())
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type     UsageType
   amount   Int
@@ -119,7 +119,7 @@ model UsageEvent {
 model LessonPlan {
   id     String @id @default(uuid())
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type   LessonPlanType
   topic  String
@@ -150,7 +150,7 @@ enum LessonItemType {
 model LessonItem {
   id           String     @id @default(uuid())
   lessonPlanId String
-  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id])
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id], onDelete: Cascade)
 
   type  LessonItemType
   order Int
@@ -173,7 +173,7 @@ enum SlideType {
 model Slide {
   id           String     @id @default(uuid())
   lessonPlanId String
-  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id])
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id], onDelete: Cascade)
 
   title        String
   content      String?
@@ -188,7 +188,7 @@ model Slide {
 model Diagram {
   id           String     @id @default(uuid())
   lessonPlanId String
-  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id])
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id], onDelete: Cascade)
 
   fileId      String?
   type        DiagramType
@@ -204,7 +204,7 @@ model Diagram {
 model Animation {
   id           String     @id @default(uuid())
   lessonPlanId String
-  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id])
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id], onDelete: Cascade)
 
   fileId      String
   fileUrl     String

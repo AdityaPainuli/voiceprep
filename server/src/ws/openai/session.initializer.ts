@@ -16,7 +16,7 @@ export async function initializeSession(
       // not handling for now.
       instructions = "You are a senior software engineer interviewer...";
     } else if (mode == "tutor") {
-      const { topic, language, experience } = config;
+      const { topic, language, experience, domain, type } = config;
       instructions = `
       You are an expert, patient AI Tutor.
       
@@ -95,7 +95,8 @@ export async function initializeSession(
             language
           ).toUpperCase() as ProgrammingLanguage,
           topic: topic,
-          type: "CODING",
+          domain: domain ?? "",
+          type: type,
         },
       });
     }

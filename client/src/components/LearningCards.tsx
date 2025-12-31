@@ -126,6 +126,7 @@ interface VisualCardProps {
   data: any;
   title: string;
   description?: string;
+  id?: string;
   onExpand?: () => void;
 }
 
@@ -134,19 +135,10 @@ export const VisualCard: React.FC<VisualCardProps> = ({
   data,
   title,
   description,
+  id,
   onExpand,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // 🔥 Force resize after mount (fixes blank render)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      window.dispatchEvent(new Event("resize"));
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <div className="bg-[#161b22] rounded-xl border border-gray-800 p-6 shadow-lg mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
@@ -204,13 +196,9 @@ export const VisualCard: React.FC<VisualCardProps> = ({
   overflow-auto p-8`}
       >
         {type === "mermaid" ? (
-          <MermaidDiagram
-            key={`mermaid-${JSON.stringify(data).length}`}
-            chart={data.code || data}
-          />
+          <MermaidDiagram key={id} chart={data.code || data} />
         ) : (
           <ChartVisualizer
-            key={`chart-${type}-${JSON.stringify(data).length}`}
             type={type}
             data={data}
             title=""
@@ -247,7 +235,6 @@ export const CodeCard: React.FC<CodeCardProps> = ({
   output,
   isError,
 }) => {
-  console.log("Inside second internal component: ", code);
   return (
     <div className="bg-[#161b22] rounded-xl border border-gray-800 shadow-lg mb-6 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between px-6 py-3 border-b border-gray-800 bg-gray-800/20">

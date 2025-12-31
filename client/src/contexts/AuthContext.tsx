@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "login_failed");
-
+    console.log("Coming here: ", data.token);
     localStorage.setItem("token", data.token);
     setToken(data.token);
 
