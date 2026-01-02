@@ -9,6 +9,8 @@ import { ClientContext, RealtimeSessionState } from "../types/client";
 import { assertusageAllowed } from "../services/usage.guard";
 import { GradeLevel } from "@prisma/client";
 
+const MAX_SESSION_MS = 60 * 20 * 1000; // 20 minutes
+
 export async function handleWsConnection(ws: WebSocket, req: any) {
   console.log("🔗 Client connected");
 
@@ -16,10 +18,7 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
   const openAI = createOpenAIClient(API_KEY);
 
   const session: RealtimeSessionState = {
-    activeStart: null,
-    lastActivityAt: null,
-    interval: null,
-    totalActiveMs: 0,
+    connectedAt: Date.now(),
   };
 
   // 🔑 1. Message buffer (very important)
@@ -106,68 +105,19 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
     );
   }
 
-  ctx = { userId, lessonPlanId };
-
-  session.interval = setInterval(async () => {
-    if (!session.activeStart || !session.lastActivityAt) return;
-
-    const now = Date.now();
-    const idleMs = now - session.lastActivityAt;
-
-    // If user stopped speaking
-    if (idleMs > 4000) {
-      const activeMs = session.lastActivityAt - session.activeStart;
-
-      session.totalActiveMs += activeMs;
-
-      const billableMinutes = Math.floor(session.totalActiveMs / 60000);
-
-      if (billableMinutes > 0) {
-        try {
-          await assertusageAllowed(ctx.userId, "REALTIME", billableMinutes);
-        } catch (e: any) {
-          ws.send(
-            JSON.stringify({
-              type: "limit_reached",
-              reason: "Realtime usage limit exceeded",
-            })
-          );
-          openAI.close();
-          ws.close();
-          return;
-        }
-        await prisma.$transaction([
-          prisma.usageEvent.create({
-            data: {
-              userId: ctx.userId,
-              type: "REALTIME_MINUTE",
-              amount: billableMinutes,
-              metadata: {
-                totalMs: session.totalActiveMs,
-              },
-            },
-          }),
-          prisma.usageSummary.upsert({
-            where: { userId: ctx.userId },
-            create: {
-              userId: ctx.userId,
-              realtimeMinutes: billableMinutes,
-            },
-            update: {
-              realtimeMinutes: { increment: billableMinutes },
-            },
-          }),
-        ]);
-
-        // subtract billed time
-        session.totalActiveMs -= billableMinutes * 60000;
-      }
-
-      // reset activity window
-      session.activeStart = null;
-      session.lastActivityAt = null;
+  const maxSessionTimeout = setTimeout(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(
+        JSON.stringify({
+          type: "limit_reached",
+          reason: "Maximum session duration reached.",
+        })
+      );
+      ws.close();
     }
-  }, 1000);
+  }, MAX_SESSION_MS);
+
+  ctx = { userId, lessonPlanId };
 
   // ✅ 4. Drain buffered messages (VERY IMPORTANT)
   for (const msg of messageQueue) {
@@ -190,38 +140,49 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
     handleOpenAIMessage(msg, ws, openAI, ctx!, session)
   );
 
+  let billed = false;
+
   ws.on("close", async () => {
     console.log("❌ Client disconnected");
 
-    if (session.interval) clearInterval(session.interval);
+    clearTimeout(maxSessionTimeout);
 
-    if (session.totalActiveMs > 0) {
-      const minutes = Math.floor(session.totalActiveMs / 60000);
+    if (!ctx) return;
 
-      if (minutes > 0) {
+    const durationMs = Date.now() - session.connectedAt;
+    const minutesUsed = Math.ceil(durationMs / 60000);
+
+    if (minutesUsed <= 0 || billed) return;
+    billed = true;
+
+    if (minutesUsed > 0) {
+      try {
         await prisma.$transaction([
           prisma.usageEvent.create({
             data: {
               userId: ctx.userId,
               type: "REALTIME_MINUTE",
-              amount: minutes,
-              metadata: { reason: "disconnect" },
+              amount: minutesUsed,
+              metadata: {
+                durationMs,
+              },
             },
           }),
           prisma.usageSummary.upsert({
             where: { userId: ctx.userId },
             create: {
               userId: ctx.userId,
-              realtimeMinutes: minutes,
+              realtimeMinutes: minutesUsed,
             },
             update: {
-              realtimeMinutes: { increment: minutes },
+              realtimeMinutes: { increment: minutesUsed },
             },
           }),
         ]);
+      } catch (e) {
+        console.error("Usage billing failed: ", e);
       }
     }
-
     openAI.close();
   });
 }

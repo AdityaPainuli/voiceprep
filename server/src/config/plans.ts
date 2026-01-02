@@ -1,6 +1,6 @@
 export const PLAN_LIMITS = {
   TRIAL: {
-    realtimeMinutes: 60,
+    realtimeMinutes: 10,
     diagrams: 100,
     videos: 3,
   },

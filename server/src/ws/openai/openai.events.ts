@@ -19,8 +19,6 @@ export async function handleOpenAIMessage(
     console.log("Session updated successfully");
   }
   if (response.type === "response.audio.delta") {
-    if (!session.activeStart) session.activeStart = Date.now();
-    session.lastActivityAt = Date.now();
     ws.send(
       JSON.stringify({
         event: "media",
@@ -80,8 +78,6 @@ export async function handleOpenAIMessage(
   }
 
   if (response.type === "input_audio_buffer.speech_started") {
-    if (!session.activeStart) session.activeStart = Date.now();
-    session.lastActivityAt = Date.now();
     ws.send(JSON.stringify({ type: "speech_started" }));
   }
 

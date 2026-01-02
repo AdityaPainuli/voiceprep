@@ -42,7 +42,7 @@ export default async function lessonRoutes(app: FastifyInstance) {
       const { lessonId } = req.params;
       const lessons = await Lessons.getLessonById(lessonId, req.user.id);
       if (!lessons) return reply.code(404).send();
-      const learningItems = mapLessonToLearningStream(lessons);
+      const learningItems = await mapLessonToLearningStream(lessons);
 
       const response = {
         config: {

@@ -6,7 +6,6 @@ import { ClientContext } from "../../types/client";
 import { assertusageAllowed } from "../../services/usage.guard";
 
 const manim = new ManimService();
-// TODO: Save all the generation it will make moving forward.  + usage metering
 export async function handleToolCall(
   response: any,
   ws: WebSocket,
@@ -44,6 +43,49 @@ export async function handleToolCall(
       );
       break;
     case "provide_code_correction":
+      await prisma.$transaction(async (tx) => {
+        const order = await getNextLessonItemOrder(ctx.lessonPlanId);
+        const code = await tx.code.create({
+          data: {
+            lessonPlanId: ctx.lessonPlanId,
+            code: args.code,
+            explanation: args.explanation,
+            language: args.language,
+          },
+        });
+
+        await tx.lessonItem.create({
+          data: {
+            lessonPlanId: ctx.lessonPlanId,
+            type: "CODE",
+            order,
+            codeId: code.id,
+          },
+        });
+
+        await tx.usageEvent.create({
+          data: {
+            userId: ctx.userId,
+            type: "CODE_GENERATED",
+            amount: 1,
+            metadata: {
+              lessonPlanId: ctx.lessonPlanId,
+              language: code.language,
+              code: code.code,
+            },
+          },
+        });
+
+        await tx.usageSummary.upsert({
+          where: { userId: ctx.userId },
+          create: {
+            userId: ctx.userId,
+            Code: 1,
+          },
+          update: { Code: { increment: 1 } },
+        });
+        return code;
+      });
       ws.send(
         JSON.stringify({
           type: "correction",
@@ -262,6 +304,26 @@ export async function handleToolCall(
           type: "animation",
           fileId: key,
           url: fileUrl,
+        })
+      );
+      break;
+    case "complete_lesson":
+      await prisma.$transaction(async (tx) => {
+        const lessonPlan = await tx.lessonPlan.update({
+          where: { id: ctx.lessonPlanId, userId: ctx.userId },
+          data: {
+            confidenceLevel: args.confidenceLevel,
+            summary: args.summary,
+          },
+        });
+        return lessonPlan;
+      });
+      ws.send(
+        JSON.stringify({
+          type: "complete_lesson",
+          summary: args.summary,
+          confidence: args.confidence,
+          suggestedNextSteps: args.suggestedNextSteps,
         })
       );
       break;

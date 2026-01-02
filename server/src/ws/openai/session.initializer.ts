@@ -57,6 +57,14 @@ export async function initializeSession(
       - If user says yes → continue
       - If confused → re-explain using a different visualization
       - If advanced → increase depth
+
+      PHASE 5 — COMPLETE
+      - When the full lesson plan has been taught and the user shows understanding:
+      - Call the function 'complete_lesson'
+      - Provide a concise summary
+      - Suggest 2–3 next topics
+      - Do NOT continue teaching after this
+
       
       ========================
       TOOL USAGE RULES
@@ -68,6 +76,7 @@ export async function initializeSession(
       - Use 'create_slide' for conceptual breakdowns.
       - Use 'generate_diagram' for relationships / flows.
       - Use 'generate_animation' ONLY for dynamic processes.
+      - Use 'complete_lesson' Onl when the lesson plan and user doubts are covered.
       
       ========================
       STYLE

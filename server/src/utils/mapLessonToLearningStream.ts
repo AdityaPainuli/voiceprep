@@ -1,4 +1,5 @@
 import { Animation, Diagram, LessonItem, Prisma, Slide } from "@prisma/client";
+import { getSignedMediaUrl } from "../services/bucket";
 
 export type LearningItem =
   | {
@@ -29,6 +30,7 @@ export type LearningItem =
       id: string;
       url: string;
       title: string;
+      fileId?: string;
       description?: string;
       code?: string;
     };
@@ -42,9 +44,9 @@ export type LessonPlanWithContent = Prisma.LessonPlanGetPayload<{
   };
 }>;
 
-export function mapLessonToLearningStream(
+export async function mapLessonToLearningStream(
   lesson: LessonPlanWithContent
-): LearningItem[] {
+): Promise<LearningItem[]> {
   const result: LearningItem[] = [];
 
   const slidesById: Map<string, Slide> = new Map(
@@ -98,11 +100,12 @@ export function mapLessonToLearningStream(
       case "ANIMATION": {
         const animation = animationsById.get(item.animationId!);
         if (!animation) break;
-
+        const fileUrl = await getSignedMediaUrl(animation.fileId); // TODO: Check for later to move it some better optimized way.
         result.push({
           type: "animation",
           id: animation.id,
-          url: animation.fileUrl, // TODO: fileURL might be expired so need to send fileID anyways,
+          url: fileUrl, // TODO: fileURL might be expired so need to send fileID anyways,
+          fileId: animation.fileId,
           title: "", // TODO: what's it?
           description: animation.description!,
         });

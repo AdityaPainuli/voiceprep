@@ -67,6 +67,7 @@ enum UsageType {
   VIDEO_GENERATED
   TOKEN_USED
   CODE_EXECUTED
+  CODE_GENERATED
 }
 
 model User {
@@ -97,6 +98,7 @@ model UsageSummary {
   diagrams        Int @default(0)
   videos          Int @default(0)
   tokens          Int @default(0)
+  Code            Int @default(0)
 
   updatedAt DateTime @updatedAt
 }
@@ -121,9 +123,11 @@ model LessonPlan {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  type   LessonPlanType
-  topic  String
-  domain String?
+  type            LessonPlanType
+  topic           String
+  domain          String?
+  confidenceLevel String?
+  summary         String?
 
   gradeLevel GradeLevel
 
@@ -137,6 +141,7 @@ model LessonPlan {
   slides     Slide[]
   diagrams   Diagram[]
   animations Animation[]
+  codes      Code[]
 
   @@index([userId])
 }
@@ -145,6 +150,7 @@ enum LessonItemType {
   SLIDE
   DIAGRAM
   ANIMATION
+  CODE
 }
 
 model LessonItem {
@@ -158,6 +164,7 @@ model LessonItem {
   slideId     String?
   diagramId   String?
   animationId String?
+  codeId      String?
 
   createdAt DateTime @default(now())
 
@@ -216,3 +223,12 @@ model Animation {
 }
 
 // Add model for saving coding questions 
+model Code {
+  id           String     @id @default(uuid())
+  lessonPlanId String
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id], onDelete: Cascade)
+
+  language    String
+  explanation String
+  code        String
+}

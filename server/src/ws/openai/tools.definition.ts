@@ -198,6 +198,32 @@ export const tools = [
       required: ["code", "title"],
     },
   },
+  {
+    type: "function",
+    name: "complete_lesson",
+    description:
+      "Signal that the lesson has been completed and wait for the user confirmation to end the session.",
+    parameters: {
+      type: "object",
+      properties: {
+        summary: {
+          type: "string",
+          description: "Short summary of what was covered in the lesson",
+        },
+        confidenceLevel: {
+          type: "string",
+          enum: ["LOW", "MEDIUM", "HIGH"],
+          description: "AI's estimate of user's understanding.",
+        },
+        suggestedNextSteps: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional follow-up topics or next lessons",
+        },
+      },
+      required: ["summary", "confidenceLevel"],
+    },
+  },
 ];
 
 export const notUsedTools = [

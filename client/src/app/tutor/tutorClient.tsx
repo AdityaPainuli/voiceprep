@@ -9,6 +9,7 @@ import {
   VisualCard,
 } from "@/components/LearningCards";
 import MermaidDiagram from "@/components/MermaidDiagram";
+import { ToastContainer } from "@/components/ToastContainer";
 import VoiceAgent from "@/components/VoiceAgent";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVoiceAgent } from "@/hooks/useVoiceAgent";
@@ -45,6 +46,11 @@ export default function TutorClient() {
     sendMessage,
     updateLearningItem,
     loadLessonPlan,
+    cancelCompletion,
+    completed,
+    completionMeta,
+    toasts,
+    pushToast,
   } = useVoiceAgent();
 
   useEffect(() => {
@@ -65,6 +71,7 @@ export default function TutorClient() {
 
   const [expandedItem, setExpandedItem] = useState<any>(null);
   const streamEndRef = useRef<HTMLDivElement>(null);
+  console.log("Happy new year 🎉");
 
   useEffect(() => {
     if (!loading && !token) {
@@ -506,285 +513,100 @@ export default function TutorClient() {
 
   // Main Learning Interface
   return (
-    <main className="flex h-screen w-full overflow-hidden bg-gray-900">
-      {/* Left Panel: Voice Agent & Info */}
-      <div className="w-1/3 min-w-[380px] border-r border-gray-700 flex flex-col">
-        <div className="flex-1 border-b border-gray-700">
-          <VoiceAgent
-            isSessionActive={isSessionActive}
-            pastSession={lessonId ? true : false}
-            status={status}
-            startSession={handleSessionStart}
-            stopSession={stopSession}
-            isMuted={isMuted}
-            toggleMute={toggleMute}
-            agentState={agentState}
-            title={tutorType === "general" ? "AI Tutor" : "AI Coding Tutor"}
-            buttonText="Start Learning"
-          />
-        </div>
+    <>
+      <ToastContainer toasts={toasts} />
+      <main className="flex h-screen w-full overflow-hidden bg-gray-900">
+        {/* Left Panel: Voice Agent & Info */}
+        <div className="w-1/3 min-w-[380px] border-r border-gray-700 flex flex-col">
+          <div className="flex-1 border-b border-gray-700">
+            <VoiceAgent
+              isSessionActive={isSessionActive}
+              pastSession={lessonId ? true : false}
+              status={status}
+              startSession={handleSessionStart}
+              stopSession={stopSession}
+              isMuted={isMuted}
+              toggleMute={toggleMute}
+              agentState={agentState}
+              title={tutorType === "general" ? "AI Tutor" : "AI Coding Tutor"}
+              buttonText="Start Learning"
+            />
+            {completed && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-[#161b22] rounded-xl p-8 max-w-lg w-full border border-gray-700 shadow-xl">
+                  <h2 className="text-2xl font-bold text-white mb-3">
+                    🎉 Lesson Complete
+                  </h2>
 
-        {/* Session Info Panel */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-800/30">
-          <div className="flex items-center justify-between mb-6">
-            <h3
-              className={`text-sm font-bold uppercase tracking-wider ${
-                tutorType === "general" ? "text-blue-400" : "text-purple-400"
-              }`}
-            >
-              Session Configuration
-            </h3>
-            <button
-              onClick={() => {
-                setSetupComplete(false);
-                stopSession();
-              }}
-              className="text-xs text-gray-400 hover:text-white transition-colors"
-            >
-              Reconfigure
-            </button>
-          </div>
+                  <p className="text-gray-300 mb-4">
+                    {completionMeta?.summary ||
+                      "You've completed this lesson successfully."}
+                  </p>
 
-          <div className="space-y-4">
-            <div className="bg-black/30 p-4 rounded-lg border border-gray-700/50">
-              <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                Topic
-              </div>
-              <div className="text-white font-medium">{config.topic}</div>
-            </div>
+                  {completionMeta?.confidence && (
+                    <div className="mb-4 text-sm text-gray-400">
+                      Confidence level:{" "}
+                      <span className="text-white font-medium">
+                        {completionMeta.confidence}
+                      </span>
+                    </div>
+                  )}
 
-            {tutorType === "general" ? (
-              <div className="bg-black/30 p-4 rounded-lg border border-gray-700/50">
-                <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                  Domain
-                </div>
-                <div className="text-white font-medium capitalize">
-                  {config.domain.replace("_", " ")}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-black/30 p-4 rounded-lg border border-gray-700/50">
-                <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                    />
-                  </svg>
-                  Language
-                </div>
-                <div className="text-white font-medium capitalize">
-                  {config.language === "cpp" ? "C++" : config.language}
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded-lg"
+                      onClick={() => {
+                        cancelCompletion();
+                        stopSession();
+                      }}
+                    >
+                      End Session
+                    </button>
+
+                    <button
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg"
+                      onClick={() => {
+                        cancelCompletion();
+                      }}
+                    >
+                      Continue Learning
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-gray-500 mt-4 text-center">
+                    Auto-closing in 5 seconds unless you continue…
+                  </p>
                 </div>
               </div>
             )}
-
-            <div className="bg-black/30 p-4 rounded-lg border border-gray-700/50">
-              <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-                Experience Level
-              </div>
-              <div className="text-white font-medium capitalize">
-                {config.experience}
-              </div>
-            </div>
           </div>
 
-          <div className="mt-6 p-4 bg-gradient-to-br from-gray-700/30 to-gray-800/30 rounded-lg border border-gray-700/50">
-            <div className="text-xs text-gray-400 mb-2">Learning Type</div>
-            <div
-              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
-                tutorType === "general"
-                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                  : "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-              }`}
-            >
-              {tutorType === "general" ? (
-                <>
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                    />
-                  </svg>
-                  General Topics
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                    />
-                  </svg>
-                  Coding & Programming
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Panel: Learning Workspace */}
-      <div className="flex-1 h-full flex flex-col bg-[#0d1117]">
-        {/* Header */}
-        <div className="h-16 border-b border-gray-800 flex items-center px-6 justify-between bg-[#161b22]">
-          <div className="flex items-center gap-3">
-            <div
-              className={`p-2 rounded-lg ${
-                tutorType === "general"
-                  ? "bg-blue-500/10 text-blue-400"
-                  : "bg-purple-500/10 text-purple-400"
-              }`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+          {/* Session Info Panel */}
+          <div className="flex-1 overflow-y-auto p-6 bg-gray-800/30">
+            <div className="flex items-center justify-between mb-6">
+              <h3
+                className={`text-sm font-bold uppercase tracking-wider ${
+                  tutorType === "general" ? "text-blue-400" : "text-purple-400"
+                }`}
               >
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-              </svg>
+                Session Configuration
+              </h3>
+              <button
+                onClick={() => {
+                  setSetupComplete(false);
+                  stopSession();
+                }}
+                className="text-xs text-gray-400 hover:text-white transition-colors"
+              >
+                Reconfigure
+              </button>
             </div>
-            <div>
-              <div className="text-gray-200 font-medium">Learning Notebook</div>
-              <div className="text-xs text-gray-500">
-                {tutorType === "general"
-                  ? "Concepts & Explanations"
-                  : "Code & Examples"}
-              </div>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <span
-              className={`px-3 py-1 text-xs font-medium rounded-full ${
-                isSessionActive
-                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                  : "bg-gray-700/50 text-gray-400 border border-gray-600/30"
-              }`}
-            >
-              {isSessionActive ? "● Active" : "○ Inactive"}
-            </span>
-          </div>
-        </div>
-
-        {/* Stream Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {learningStream.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
-              <div className="w-24 h-24 bg-gray-800/50 rounded-2xl flex items-center justify-center mb-6 border border-gray-700/50">
-                {tutorType === "general" ? (
+            <div className="space-y-4">
+              <div className="bg-black/30 p-4 rounded-lg border border-gray-700/50">
+                <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
                   <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="48"
-                    height="48"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-gray-600"
-                  >
-                    <path d="M12 20h9"></path>
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="48"
-                    height="48"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-gray-600"
-                  >
-                    <polyline points="16 18 22 12 16 6"></polyline>
-                    <polyline points="8 6 2 12 8 18"></polyline>
-                  </svg>
-                )}
-              </div>
-              <p className="text-xl font-semibold text-gray-400 mb-2">
-                Ready to start learning
-              </p>
-              <p className="text-sm text-gray-500 text-center max-w-md">
-                {tutorType === "general"
-                  ? "Your learning materials, diagrams, and explanations will appear here as you discuss with your AI tutor"
-                  : "Code examples, explanations, and interactive exercises will appear here as you learn"}
-              </p>
-              <div className="mt-8 flex gap-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <svg
-                    className="w-5 h-5"
+                    className="w-4 h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -793,30 +615,64 @@ export default function TutorClient() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth="2"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
-                  Interactive Learning
+                  Topic
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
-                    />
-                  </svg>
-                  Voice Enabled
+                <div className="text-white font-medium">{config.topic}</div>
+              </div>
+
+              {tutorType === "general" ? (
+                <div className="bg-black/30 p-4 rounded-lg border border-gray-700/50">
+                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      />
+                    </svg>
+                    Domain
+                  </div>
+                  <div className="text-white font-medium capitalize">
+                    {config.domain.replace("_", " ")}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+              ) : (
+                <div className="bg-black/30 p-4 rounded-lg border border-gray-700/50">
+                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                      />
+                    </svg>
+                    Language
+                  </div>
+                  <div className="text-white font-medium capitalize">
+                    {config.language === "cpp" ? "C++" : config.language}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-black/30 p-4 rounded-lg border border-gray-700/50">
+                <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
                   <svg
-                    className="w-5 h-5"
+                    className="w-4 h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -828,184 +684,388 @@ export default function TutorClient() {
                       d="M13 10V3L4 14h7v7l9-11h-7z"
                     />
                   </svg>
-                  Real-time Feedback
+                  Experience Level
+                </div>
+                <div className="text-white font-medium capitalize">
+                  {config.experience}
                 </div>
               </div>
             </div>
-          ) : (
-            learningStream.map((item) => {
-              if (item.type === "note") {
-                return (
-                  <NoteCard
-                    key={item.id}
-                    title={item.title}
-                    content={item.content}
-                    tags={item.tags}
-                    onSave={
-                      item.title.toLowerCase().includes("plan")
-                        ? (newContent) => {
-                            // Update local state immediately
-                            updateLearningItem(item.id, {
-                              content: newContent,
-                            });
-                            // Notify AI
-                            sendMessage(
-                              `I have updated the lesson plan. Here is the new version:\n\n${newContent}\n\nPlease confirm and let's start.`
-                            );
-                          }
-                        : undefined
-                    }
-                  />
-                );
-              } else if (item.type === "visual") {
-                return (
-                  <VisualCard
-                    key={`${item.id}-${item.data.length}`}
-                    id={item.id}
-                    type={item.chartType}
-                    data={item.data}
-                    title={item.title}
-                    description={item.description}
-                    onExpand={() =>
-                      setExpandedItem({
-                        type: "visual",
-                        data: item.data,
-                        title: item.title,
-                        description: item.description,
-                        chartType: item.chartType,
-                      })
-                    }
-                  />
-                );
-              } else if (item.type === "code") {
-                return (
-                  <CodeCard
-                    key={item.id}
-                    code={item.code}
-                    language={item.language}
-                    explanation={item.explanation}
-                    onRun={(code) => runCode(code, item.id)}
-                    isRunning={executionStates[item.id]?.isRunning}
-                    output={executionStates[item.id]?.output}
-                    isError={executionStates[item.id]?.isError}
-                  />
-                );
-              } else if (item.type === "slide") {
-                return (
-                  <SlideCard
-                    key={item.id}
-                    title={item.title}
-                    bulletPoints={item.bulletPoints}
-                  />
-                );
-              } else if (item.type === "animation") {
-                return (
-                  <VideoCard
-                    key={item.id}
-                    url={item.url}
-                    title={item.title}
-                    description={item.description}
-                    onExpand={() =>
-                      setExpandedItem({
-                        type: "video",
-                        url: item.url,
-                        title: item.title,
-                        description: item.description,
-                      })
-                    }
-                  />
-                );
-              }
-              return null;
-            })
-          )}
-          {/* Auto-scroll anchor */}
-          <div id="stream-end" ref={streamEndRef} />
-        </div>
-      </div>
 
-      {/* Full Screen Modal */}
-      {expandedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-8 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-6xl max-h-[90vh] flex flex-col">
-            <button
-              onClick={() => setExpandedItem(null)}
-              className="absolute -top-12 right-0 p-2 text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-700 rounded-full transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="mt-6 p-4 bg-gradient-to-br from-gray-700/30 to-gray-800/30 rounded-lg border border-gray-700/50">
+              <div className="text-xs text-gray-400 mb-2">Learning Type</div>
+              <div
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+                  tutorType === "general"
+                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                    : "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                }`}
               >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-
-            <div className="bg-[#161b22] rounded-xl border border-gray-800 p-8 shadow-2xl overflow-hidden flex flex-col h-full">
-              <div className="flex items-center justify-between mb-6 border-b border-gray-800 pb-4 flex-1">
-                <h2 className="text-2xl font-bold text-white">
-                  {expandedItem.title}
-                </h2>
-                {expandedItem.type === "visual" && (
-                  <span className="px-3 py-1 bg-purple-500/10 text-purple-400 text-sm font-medium rounded-full border border-purple-500/20 uppercase">
-                    {expandedItem.chartType === "mermaid"
-                      ? "Diagram"
-                      : `${expandedItem.chartType} Chart`}
-                  </span>
-                )}
-                {expandedItem.type === "video" && (
-                  <span className="px-3 py-1 bg-red-500/10 text-red-400 text-sm font-medium rounded-full border border-red-500/20 uppercase">
-                    Animation
-                  </span>
-                )}
-              </div>
-
-              <div className="flex-1 overflow-auto min-h-0 flex items-center justify-center bg-black/20 rounded-lg border border-gray-800/50 p-4">
-                {expandedItem.type === "visual" && expandedItem.chartType && (
-                  <div className="w-full h-full min-h-[500px]">
-                    {expandedItem.chartType === "mermaid" ? (
-                      <div className="w-full h-full flex items-center justify-center overflow-auto">
-                        <MermaidDiagram chart={expandedItem.data} />
-                      </div>
-                    ) : (
-                      <ChartVisualizer
-                        type={expandedItem.chartType}
-                        data={expandedItem.data}
-                        title=""
-                        description=""
+                {tutorType === "general" ? (
+                  <>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                       />
-                    )}
-                  </div>
-                )}
-
-                {expandedItem.type === "video" && expandedItem.url && (
-                  <video
-                    src={expandedItem.url}
-                    controls
-                    autoPlay
-                    className="max-w-full max-h-full rounded-lg shadow-lg"
-                  >
-                    Your browser does not support the video tag.
-                  </video>
+                    </svg>
+                    General Topics
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                      />
+                    </svg>
+                    Coding & Programming
+                  </>
                 )}
               </div>
-
-              {expandedItem.description && (
-                <div className="mt-6 text-gray-300 bg-gray-800/30 p-4 rounded-lg border border-gray-800/50 text-lg">
-                  {expandedItem.description}
-                </div>
-              )}
             </div>
           </div>
         </div>
-      )}
-    </main>
+
+        {/* Right Panel: Learning Workspace */}
+        <div className="flex-1 h-full flex flex-col bg-[#0d1117]">
+          {/* Header */}
+          <div className="h-16 border-b border-gray-800 flex items-center px-6 justify-between bg-[#161b22]">
+            <div className="flex items-center gap-3">
+              <div
+                className={`p-2 rounded-lg ${
+                  tutorType === "general"
+                    ? "bg-blue-500/10 text-blue-400"
+                    : "bg-purple-500/10 text-purple-400"
+                }`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+              </div>
+              <div>
+                <div className="text-gray-200 font-medium">
+                  Learning Notebook
+                </div>
+                <div className="text-xs text-gray-500">
+                  {tutorType === "general"
+                    ? "Concepts & Explanations"
+                    : "Code & Examples"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span
+                className={`px-3 py-1 text-xs font-medium rounded-full ${
+                  isSessionActive
+                    ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                    : "bg-gray-700/50 text-gray-400 border border-gray-600/30"
+                }`}
+              >
+                {isSessionActive ? "● Active" : "○ Inactive"}
+              </span>
+            </div>
+          </div>
+
+          {/* Stream Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {learningStream.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                <div className="w-24 h-24 bg-gray-800/50 rounded-2xl flex items-center justify-center mb-6 border border-gray-700/50">
+                  {tutorType === "general" ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="48"
+                      height="48"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-gray-600"
+                    >
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="48"
+                      height="48"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-gray-600"
+                    >
+                      <polyline points="16 18 22 12 16 6"></polyline>
+                      <polyline points="8 6 2 12 8 18"></polyline>
+                    </svg>
+                  )}
+                </div>
+                <p className="text-xl font-semibold text-gray-400 mb-2">
+                  Ready to start learning
+                </p>
+                <p className="text-sm text-gray-500 text-center max-w-md">
+                  {tutorType === "general"
+                    ? "Your learning materials, diagrams, and explanations will appear here as you discuss with your AI tutor"
+                    : "Code examples, explanations, and interactive exercises will appear here as you learn"}
+                </p>
+                <div className="mt-8 flex gap-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Interactive Learning
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                      />
+                    </svg>
+                    Voice Enabled
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                    Real-time Feedback
+                  </div>
+                </div>
+              </div>
+            ) : (
+              learningStream.map((item) => {
+                if (item.type === "note") {
+                  return (
+                    <NoteCard
+                      key={item.id}
+                      title={item.title}
+                      content={item.content}
+                      tags={item.tags}
+                      onSave={
+                        item.title.toLowerCase().includes("plan")
+                          ? (newContent) => {
+                              // Update local state immediately
+                              updateLearningItem(item.id, {
+                                content: newContent,
+                              });
+                              // Notify AI
+                              sendMessage(
+                                `I have updated the lesson plan. Here is the new version:\n\n${newContent}\n\nPlease confirm and let's start.`
+                              );
+                            }
+                          : undefined
+                      }
+                    />
+                  );
+                } else if (item.type === "visual") {
+                  return (
+                    <VisualCard
+                      key={`${item.id}-${item.data.length}`}
+                      id={item.id}
+                      type={item.chartType}
+                      data={item.data}
+                      title={item.title}
+                      description={item.description}
+                      onExpand={() =>
+                        setExpandedItem({
+                          type: "visual",
+                          data: item.data,
+                          title: item.title,
+                          description: item.description,
+                          chartType: item.chartType,
+                        })
+                      }
+                    />
+                  );
+                } else if (item.type === "code") {
+                  return (
+                    <CodeCard
+                      key={item.id}
+                      code={item.code}
+                      language={item.language}
+                      explanation={item.explanation}
+                      onRun={(code) => runCode(code, item.id)}
+                      isRunning={executionStates[item.id]?.isRunning}
+                      output={executionStates[item.id]?.output}
+                      isError={executionStates[item.id]?.isError}
+                    />
+                  );
+                } else if (item.type === "slide") {
+                  return (
+                    <SlideCard
+                      key={item.id}
+                      title={item.title}
+                      bulletPoints={item.bulletPoints}
+                    />
+                  );
+                } else if (item.type === "animation") {
+                  return (
+                    <VideoCard
+                      key={item.id}
+                      url={item.url}
+                      title={item.title}
+                      description={item.description}
+                      onExpand={() =>
+                        setExpandedItem({
+                          type: "video",
+                          url: item.url,
+                          title: item.title,
+                          description: item.description,
+                        })
+                      }
+                    />
+                  );
+                }
+                return null;
+              })
+            )}
+            {/* Auto-scroll anchor */}
+            <div id="stream-end" ref={streamEndRef} />
+          </div>
+        </div>
+
+        {/* Full Screen Modal */}
+        {expandedItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-8 animate-in fade-in duration-200">
+            <div className="relative w-full max-w-6xl max-h-[90vh] flex flex-col">
+              <button
+                onClick={() => setExpandedItem(null)}
+                className="absolute -top-12 right-0 p-2 text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-700 rounded-full transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+
+              <div className="bg-[#161b22] rounded-xl border border-gray-800 p-8 shadow-2xl overflow-hidden flex flex-col h-full">
+                <div className="flex items-center justify-between mb-6 border-b border-gray-800 pb-4 flex-1">
+                  <h2 className="text-2xl font-bold text-white">
+                    {expandedItem.title}
+                  </h2>
+                  {expandedItem.type === "visual" && (
+                    <span className="px-3 py-1 bg-purple-500/10 text-purple-400 text-sm font-medium rounded-full border border-purple-500/20 uppercase">
+                      {expandedItem.chartType === "mermaid"
+                        ? "Diagram"
+                        : `${expandedItem.chartType} Chart`}
+                    </span>
+                  )}
+                  {expandedItem.type === "video" && (
+                    <span className="px-3 py-1 bg-red-500/10 text-red-400 text-sm font-medium rounded-full border border-red-500/20 uppercase">
+                      Animation
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-auto min-h-0 flex items-center justify-center bg-black/20 rounded-lg border border-gray-800/50 p-4">
+                  {expandedItem.type === "visual" && expandedItem.chartType && (
+                    <div className="w-full h-full min-h-[500px]">
+                      {expandedItem.chartType === "mermaid" ? (
+                        <div className="w-full h-full flex items-center justify-center overflow-auto">
+                          <MermaidDiagram chart={expandedItem.data} />
+                        </div>
+                      ) : (
+                        <ChartVisualizer
+                          type={expandedItem.chartType}
+                          data={expandedItem.data}
+                          title=""
+                          description=""
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {expandedItem.type === "video" && expandedItem.url && (
+                    <video
+                      src={expandedItem.url}
+                      controls
+                      autoPlay
+                      className="max-w-full max-h-full rounded-lg shadow-lg"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  )}
+                </div>
+
+                {expandedItem.description && (
+                  <div className="mt-6 text-gray-300 bg-gray-800/30 p-4 rounded-lg border border-gray-800/50 text-lg">
+                    {expandedItem.description}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { authFetch } from "@/lib/authFetch";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -33,42 +34,26 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!user && !loading) {
+    if (loading) return;
+
+    if (!user) {
       router.push("/login");
       return;
     }
-    console.log(user);
-    const fetchusage = async () => {
-      const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/usage-summary`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          method: "GET",
-        }
-      );
-      const data = await resp.json();
-      setUsageSummary(data);
-    };
+    const fetchData = async () => {
+      try {
+        const [usageRes, lessonRes] = await Promise.all([
+          authFetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/usage-summary`),
+          authFetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/lessons`),
+        ]);
 
-    const fetchLessons = async () => {
-      const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/lessons`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          method: "GET",
-        }
-      );
-      const data = await resp.json();
-      setLessons(data);
+        setUsageSummary(await usageRes.json());
+        setLessons(await lessonRes.json());
+      } catch (e) {
+        console.error("Auth fetch failed", e);
+      }
     };
-    fetchusage();
-    fetchLessons();
+    fetchData();
   }, [loading, user]);
 
   return (

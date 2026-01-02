@@ -6,10 +6,7 @@ export interface ClientContext {
 }
 
 type RealtimeSessionState = {
-  activeStart: number | null;
-  lastActivityAt: number | null;
-  totalActiveMs: number;
-  interval: NodeJS.Timeout | null;
+  connectedAt: number;
 };
 
 export interface UserUsageState {

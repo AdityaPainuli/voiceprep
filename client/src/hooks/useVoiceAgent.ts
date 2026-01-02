@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { floatTo16BitPCM, base64ToFloat32Array } from "../utils/audio";
-import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 export type LearningItem =
@@ -36,6 +35,14 @@ export type LearningItem =
       code?: string;
     };
 
+export type ToastType = "info" | "success" | "warning" | "error";
+export interface Toast {
+  id: string;
+  message: string;
+  type: ToastType;
+  duration?: number;
+}
+
 export const useVoiceAgent = () => {
   const { token, loading } = useAuth();
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -44,6 +51,13 @@ export const useVoiceAgent = () => {
   const [testCases, setTestCases] = useState<
     { input: string; expectedOutput: string }[]
   >([]);
+  const [completed, setCompleted] = useState<boolean>(false);
+  const [completionMeta, setCompletionMeta] = useState<{
+    summary?: string;
+    confidence?: string;
+  } | null>(null);
+  const completionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const [isSolved, setIsSolved] = useState(false);
   const [correctedCode, setCorrectedCode] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +65,16 @@ export const useVoiceAgent = () => {
     "idle" | "listening" | "thinking" | "speaking"
   >("idle");
   const isSubmittingRef = useRef(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const pushToast = useCallback((toast: Omit<Toast, "id">) => {
+    const id = crypto.randomUUID();
+    setToasts((prev) => [...prev, { id, ...toast }]);
+
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, toast.duration ?? 4000);
+  }, []);
 
   const loadLessonPlan = useCallback(
     async (lessonId: string) => {
@@ -79,6 +103,14 @@ export const useVoiceAgent = () => {
     },
     [token]
   );
+
+  const cancelCompletion = () => {
+    if (completionTimerRef.current) {
+      clearTimeout(completionTimerRef.current);
+      completionTimerRef.current = null;
+    }
+    setCompleted(false);
+  };
 
   useEffect(() => {
     isSubmittingRef.current = isSubmitting;
@@ -179,6 +211,26 @@ export const useVoiceAgent = () => {
             setAgentState("thinking");
           }
 
+          if (data.type === "limit_reached") {
+            pushToast({
+              type: "error",
+              message: data.reason || "Usage limit reached",
+            });
+
+            setTimeout(() => {
+              stopSession();
+            }, 2000);
+          }
+
+          if (data.type === "usage_warning") {
+            pushToast({
+              type: "warning",
+              message:
+                data.message ||
+                `You've used ${data.percent}% of your realtime limit`,
+            });
+          }
+
           if (data.type === "question") {
             setQuestion(data.question);
             setTestCases(data.testCases || []);
@@ -223,6 +275,18 @@ export const useVoiceAgent = () => {
               setIsError(data.status === "error");
               setIsRunning(false);
             }
+          }
+
+          if (data.type === "complete_lesson") {
+            setCompleted(true);
+            setCompletionMeta({
+              summary: data.summary,
+              confidence: data.confidenceLevel,
+            });
+
+            completionTimerRef.current = setTimeout(() => {
+              stopSession();
+            }, 5000);
           }
 
           if (data.type === "chart") {
@@ -310,11 +374,11 @@ export const useVoiceAgent = () => {
             ]);
           }
 
-          if (data.type === "limit_reached") {
-            toast.error("You've reached your usage limit for this plan.");
-            setIsSessionActive(false);
-            ws.close();
-          }
+          // if (data.type === "limit_reached") {
+          //   toast.error("You've reached your usage limit for this plan.");
+          //   setIsSessionActive(false);
+          //   ws.close();
+          // }
         };
 
         ws.onclose = () => {
@@ -422,6 +486,7 @@ export const useVoiceAgent = () => {
   }, []);
 
   const sendMessage = useCallback((text: string) => {
+    cancelCompletion();
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
@@ -557,5 +622,10 @@ export const useVoiceAgent = () => {
     sendMessage,
     updateLearningItem,
     loadLessonPlan,
+    completed,
+    completionMeta,
+    cancelCompletion,
+    toasts,
+    pushToast,
   };
 };
