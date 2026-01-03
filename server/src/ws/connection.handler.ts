@@ -61,7 +61,7 @@ export async function handleWsConnection(ws: WebSocket, req: any) {
   } catch (e: any) {
     ws.send(
       JSON.stringify({
-        type: "limit_reached",
+        type: "limit_reached or email not verified",
         reason: e.message,
       })
     );

@@ -13,6 +13,10 @@ export async function assertusageAllowed(
 
   if (!user) throw new Error("User not found");
 
+  if (!user.emailVerified) {
+    throw new Error("Email not verified");
+  }
+
   const plan = PLAN_LIMITS[user.plan];
   const usage = user.usageSummary;
 

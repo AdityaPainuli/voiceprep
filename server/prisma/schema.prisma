@@ -71,11 +71,12 @@ enum UsageType {
 }
 
 model User {
-  id       String   @id @default(uuid())
-  email    String   @unique
-  password String
-  name     String?
-  plan     UserPlan @default(TRIAL)
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  name          String?
+  plan          UserPlan @default(TRIAL)
+  emailVerified Boolean  @default(false)
 
   creditBalance Float @default(0)
 
@@ -84,9 +85,22 @@ model User {
 
   lessonPlans LessonPlan[]
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  usageEvents UsageEvent[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  usageEvents             UsageEvent[]
+  emailVerificationTokens EmailVerificationToken[]
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
 }
 
 model UsageSummary {
