@@ -75,10 +75,12 @@ export const useVoiceAgent = () => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, toast.duration ?? 4000);
   }, []);
+  const [loadingLesson, setLoadingLesson] = useState(true);
 
   const loadLessonPlan = useCallback(
     async (lessonId: string) => {
       try {
+        setLoadingLesson(true);
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_API_URL}/lessons/${lessonId}`,
           {
@@ -99,6 +101,8 @@ export const useVoiceAgent = () => {
       } catch (err) {
         console.error("Failed to load lesson:", err);
         return null;
+      } finally {
+        setLoadingLesson(false);
       }
     },
     [token]
@@ -627,5 +631,6 @@ export const useVoiceAgent = () => {
     cancelCompletion,
     toasts,
     pushToast,
+    loadingLesson,
   };
 };

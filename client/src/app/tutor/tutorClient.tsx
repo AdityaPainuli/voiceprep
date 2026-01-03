@@ -51,6 +51,7 @@ export default function TutorClient() {
     completionMeta,
     toasts,
     pushToast,
+    loadingLesson,
   } = useVoiceAgent();
 
   useEffect(() => {
@@ -94,10 +95,15 @@ export default function TutorClient() {
     startSession("tutor", config);
   };
 
-  if (loading) {
+  if (loading || loadingLesson) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+          <p className="text-gray-400 text-sm">
+            {lessonId ? "Loading lesson plan..." : "Loading tutor..."}
+          </p>
+        </div>
       </div>
     );
   }

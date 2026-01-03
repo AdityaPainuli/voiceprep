@@ -31,6 +31,7 @@ export default function Home() {
   const { loading, user } = useAuth();
   const [usageSummary, setUsageSummary] = useState<UsageSummary>();
   const [lessons, setLessons] = useState<LessonsInterface[]>([]);
+  const [pageLoading, setPageLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function Home() {
     }
     const fetchData = async () => {
       try {
+        setPageLoading(true);
         const [usageRes, lessonRes] = await Promise.all([
           authFetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/usage-summary`),
           authFetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/lessons`),
@@ -51,10 +53,23 @@ export default function Home() {
         setLessons(await lessonRes.json());
       } catch (e) {
         console.error("Auth fetch failed", e);
+      } finally {
+        setPageLoading(false);
       }
     };
     fetchData();
   }, [loading, user]);
+
+  if (loading || pageLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+          <p className="text-gray-400 text-sm">Loading your dashboard…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
