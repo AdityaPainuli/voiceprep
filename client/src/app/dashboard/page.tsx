@@ -290,7 +290,12 @@ export default function DashboardPage() {
             </div>
             <div className="mt-6">
               <button className="block w-full bg-blue-600 hover:bg-blue-700 text-center py-3 rounded-lg font-bold transition-colors">
-                Book a call for upgrading your plan
+                <a
+                  target="_blank"
+                  href="https://calendar.app.google/oRRB2riEpXaV5vbz8"
+                >
+                  Book a call for upgrading your plan
+                </a>
               </button>
             </div>
           </div>
