@@ -48,7 +48,7 @@ export async function handleToolCall(
         const code = await tx.code.create({
           data: {
             lessonPlanId: ctx.lessonPlanId,
-            code: args.code,
+            code: args.correctedCode,
             explanation: args.explanation,
             language: args.language,
           },
