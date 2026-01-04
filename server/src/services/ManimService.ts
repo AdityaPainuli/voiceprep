@@ -14,9 +14,7 @@ export class ManimService {
 
   constructor() {
     this.outputDir = path.join("/tmp", "manim");
-    this.pythonPath =
-      process.env.PYTHON_PATH ||
-      path.join(process.cwd(), "venv", "bin", "python");
+    this.pythonPath = process.env.PYTHON_PATH || "python3";
 
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
