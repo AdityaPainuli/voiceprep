@@ -112,22 +112,38 @@ export const tools = [
     type: "function",
     name: "generate_diagram",
     description:
-      "Generate a Mermaid.js diagram. All node labels MUST be wrapped in double quotes to ensure parser safety.",
+      "Generate a valid Mermaid.js diagram for structures or flows. The output MUST be syntactically correct Mermaid and renderable without errors.",
     parameters: {
       type: "object",
       properties: {
         code: {
           type: "string",
-          description:
-            'Mermaid.js syntax string. Node labels must be quoted (e.g., A["My Label"]). Do not include markdown backticks.',
+          description: `
+            Mermaid.js diagram code.
+            
+            STRICT RULES (MUST FOLLOW):
+            - Do NOT include markdown backticks.
+            - Do NOT include trailing semicolons (;).
+            - Do NOT include standalone nodes (e.g. "Node"; is INVALID).
+            - Every node MUST be part of an edge OR explicitly declared using id["Label"] syntax.
+            - All node labels MUST be wrapped in double quotes.
+            - Use multi-line format (one edge per line).
+            - Example (VALID):
+            
+            graph TD
+              "Root" --> "Left Child"
+              "Root" --> "Right Child"
+              "Left Child" --> "Leaf A"
+              "Left Child" --> "Leaf B"
+          `.trim(),
         },
         title: {
           type: "string",
-          description: "Title of the diagram.",
+          description: "Short, clear title of the diagram.",
         },
         description: {
           type: "string",
-          description: "Brief description of what the diagram shows.",
+          description: "Brief explanation of what the diagram represents.",
         },
       },
       required: ["code", "title"],
