@@ -75,12 +75,14 @@ export const useVoiceAgent = () => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, toast.duration ?? 4000);
   }, []);
-  const [loadingLesson, setLoadingLesson] = useState(true);
+  const [loadingLesson, setLoadingLesson] = useState(false);
 
   const loadLessonPlan = useCallback(
     async (lessonId: string) => {
       try {
-        setLoadingLesson(true);
+        if (lessonId !== "") {
+          setLoadingLesson(true);
+        }
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_API_URL}/lessons/${lessonId}`,
           {
