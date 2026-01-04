@@ -77,13 +77,6 @@ export async function initializeSession(
       - Use 'generate_diagram' for relationships / flows.
       - Use 'generate_animation' ONLY for dynamic processes.
       - Use 'complete_lesson' Onl when the lesson plan and user doubts are covered.
-
-      When using generate_diagram:
-        - Validate Mermaid syntax mentally before emitting
-        - Never emit dangling nodes
-        - If unsure, simplify the diagram
-        - Prefer fewer nodes over invalid syntax
-
       
       ========================
       STYLE

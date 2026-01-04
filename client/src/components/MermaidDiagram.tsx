@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import mermaid, { MermaidConfig } from "mermaid";
-
 interface MermaidDiagramProps {
   chart: string;
 }
@@ -19,12 +18,9 @@ interface MermaidDiagramProps {
 
 export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const hasRendered = useRef(false);
 
   useEffect(() => {
-    if (!containerRef.current || hasRendered.current) return;
-
-    hasRendered.current = true;
+    if (!containerRef.current) return;
 
     mermaid.initialize({
       startOnLoad: false,
@@ -34,6 +30,8 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
 
     const id = `mermaid-${Math.random().toString(36).slice(2)}`;
 
+    // 🔑 clear previous render
+    containerRef.current.innerHTML = "";
     mermaid
       .render(id, chart)
       .then(({ svg }) => {
@@ -43,6 +41,7 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
       })
       .catch((err) => {
         console.error("Mermaid render error:", err);
+        console.error("Code: ", chart);
       });
   }, [chart]);
 

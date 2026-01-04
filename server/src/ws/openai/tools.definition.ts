@@ -112,29 +112,87 @@ export const tools = [
     type: "function",
     name: "generate_diagram",
     description:
-      "Generate a valid Mermaid.js diagram for structures or flows. The output MUST be syntactically correct Mermaid and renderable without errors.",
+      "Generate a canonical, valid Mermaid.js diagram using SAFE node IDs and labels. The output MUST render successfully in Mermaid across common renderers (GitHub, VS Code, Obsidian, etc.) without post-processing.",
     parameters: {
       type: "object",
       properties: {
         code: {
           type: "string",
           description: `
-            Mermaid.js diagram code.
-            
-            STRICT RULES (MUST FOLLOW):
-            - Do NOT include markdown backticks.
-            - Do NOT include trailing semicolons (;).
-            - Do NOT include standalone nodes (e.g. "Node"; is INVALID).
-            - Every node MUST be part of an edge OR explicitly declared using id["Label"] syntax.
-            - All node labels MUST be wrapped in double quotes.
-            - Use multi-line format (one edge per line).
-            - Example (VALID):
-            
-            graph TD
-              "Root" --> "Left Child"
-              "Root" --> "Right Child"
-              "Left Child" --> "Leaf A"
-              "Left Child" --> "Leaf B"
+  Mermaid.js diagram code.
+  
+  ABSOLUTE RULES (MUST FOLLOW — NO EXCEPTIONS):
+  
+  1. The FIRST line MUST be exactly one of:
+     graph TD
+     graph LR
+     graph RL
+     graph BT
+  
+  2. The graph declaration MUST be on its own line.
+     ❌ INVALID: graph TD A --> B
+     ✅ VALID:
+        graph TD
+          A --> B
+  
+  3. Node IDs MUST:
+     - Contain ONLY letters, numbers, or underscores
+     - Have NO spaces
+     - NOT be quoted
+     - Be unique within the graph
+     ✅ VALID: RootNode, LeftChild_1
+     ❌ INVALID: "Left Child", Left Child
+  
+  4. EVERY edge MUST be written on its OWN line using EXACTLY this format:
+     NodeID_A --> NodeID_B
+  
+  5. The arrow (-->) MUST be on the SAME LINE as both node IDs.
+  
+  6. DO NOT place multiple edges on the same line.
+     ❌ INVALID:
+        A --> B B --> C
+  
+  7. DO NOT include standalone nodes.
+     ❌ INVALID:
+        A
+  
+  8. Node labels MUST:
+     - Be defined using square-bracket syntax
+     - Appear AFTER all edges
+     - Be single-line
+     - Use only standard ASCII characters
+     - Be wrapped in straight double quotes (")
+     FORMAT:
+       NodeID["Human Readable Label"]
+  
+  9. EVERY NodeID used in edges MUST have exactly ONE label definition.
+  
+  10. DO NOT include semicolons (;), commas, comments, or extra separators.
+  
+  11. DO NOT collapse whitespace.
+      DO NOT remove line breaks.
+      DO NOT optimize for compactness.
+  
+  12. Output ONLY Mermaid code.
+      NO markdown.
+      NO explanations.
+      NO comments.
+  
+  VALID EXAMPLE (FOLLOW EXACTLY):
+  
+  graph TD
+    Root --> LeftChild
+    Root --> RightChild
+    LeftChild --> Leaf1
+    LeftChild --> Leaf2
+    RightChild --> Leaf3
+  
+    Root["Root"]
+    LeftChild["Left Child"]
+    RightChild["Right Child"]
+    Leaf1["Leaf 1"]
+    Leaf2["Leaf 2"]
+    Leaf3["Leaf 3"]
           `.trim(),
         },
         title: {
