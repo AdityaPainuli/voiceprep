@@ -1,4 +1,11 @@
-import { Animation, Diagram, LessonItem, Prisma, Slide } from "@prisma/client";
+import {
+  Animation,
+  Code,
+  Diagram,
+  LessonItem,
+  Prisma,
+  Slide,
+} from "@prisma/client";
 import { getSignedMediaUrl } from "../services/bucket";
 
 export type LearningItem =
@@ -41,6 +48,7 @@ export type LessonPlanWithContent = Prisma.LessonPlanGetPayload<{
     diagrams: true;
     animations: true;
     items: true;
+    codes: true;
   };
 }>;
 
@@ -57,6 +65,9 @@ export async function mapLessonToLearningStream(
   );
   const animationsById: Map<string, Animation> = new Map(
     lesson.animations.map((a: Animation) => [a.id, a])
+  );
+  const codesById: Map<string, Code> = new Map(
+    lesson.codes.map((c: Code) => [c.id, c])
   );
 
   for (const item of lesson.items.sort(
@@ -108,6 +119,18 @@ export async function mapLessonToLearningStream(
           fileId: animation.fileId,
           title: "", // TODO: what's it?
           description: animation.description!,
+        });
+        break;
+      }
+      case "CODE": {
+        const code = codesById.get(item.codeId!);
+        if (!code) break;
+        result.push({
+          type: "code",
+          id: code.id,
+          code: code.code,
+          explanation: code.explanation,
+          language: code.language,
         });
         break;
       }

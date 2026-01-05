@@ -76,29 +76,16 @@ export async function getLessonById(
 ): Promise<LessonPlanWithContent | null> {
   const lessonPlan = await prisma.lessonPlan.findUnique({
     where: { id: lessonId, userId: userId },
-    include: { slides: true, diagrams: true, animations: true, items: true },
+    include: {
+      slides: true,
+      diagrams: true,
+      animations: true,
+      items: true,
+      codes: true,
+    },
   });
   if (!lessonPlan) {
     return null;
   }
   return lessonPlan;
-
-  // const learningStream: learningStream[] = lessonPlan?.slides.map((slide) => ({
-  //   type: slide.type as string,
-  //   id: slide.id as string,
-  //   title: slide.title as string,
-  //   content: slide.content as string,
-  //   bulletPoints: slide.bulletPoints,
-  //   tags: slide.tags,
-  // }));
-  // return {
-  //   id: lessonPlan.id ?? "",
-  //   config: {
-  //     topic: lessonPlan.topic ?? "",
-  //     domain: lessonPlan.domain ?? "",
-  //     language: lessonPlan.programmingLanguage ?? "",
-  //     experience: lessonPlan.gradeLevel ?? "",
-  //   },
-  //   learningStream: learningStream,
-  // };
 }
