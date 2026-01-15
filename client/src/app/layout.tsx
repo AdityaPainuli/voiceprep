@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "@/contexts/AuthContext";
+import { WarmupProvider } from "@/components/WarmupProvider";
 
 // ...
 
@@ -31,7 +32,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <WarmupProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </WarmupProvider>
       </body>
     </html>
   );
