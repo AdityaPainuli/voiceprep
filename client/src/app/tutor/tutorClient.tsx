@@ -1029,7 +1029,7 @@ export default function TutorClient() {
                   {expandedItem.type === "visual" && expandedItem.chartType && (
                     <div className="w-full h-full min-h-[500px]">
                       {expandedItem.chartType === "mermaid" ? (
-                        <div className="w-full h-full flex items-center justify-center overflow-auto">
+                        <div className="w-full h-full">
                           <MermaidDiagram chart={expandedItem.data} />
                         </div>
                       ) : (

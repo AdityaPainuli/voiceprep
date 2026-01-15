@@ -169,7 +169,8 @@ export const VisualCard: React.FC<VisualCardProps> = ({
             className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition-colors"
             title="Maximize"
           >
-            <svg
+            {/* TODO: Fix issues related to mermaid diagram sometimes only half screen rendered. */}
+            {/* <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
               height="16"
@@ -184,7 +185,7 @@ export const VisualCard: React.FC<VisualCardProps> = ({
               <polyline points="9 21 3 21 3 15" />
               <line x1="21" y1="3" x2="14" y2="10" />
               <line x1="3" y1="21" x2="10" y2="14" />
-            </svg>
+            </svg> */}
           </button>
         )}
       </div>
@@ -192,8 +193,7 @@ export const VisualCard: React.FC<VisualCardProps> = ({
       {/* CHART CONTAINER */}
       <div
         className={`relative w-full bg-black/20 rounded-lg border border-gray-800/50 
-  ${type === "mermaid" ? "min-h-[400px]" : "h-[400px]"}
-  overflow-auto p-8`}
+  ${type === "mermaid" ? "h-[500px]" : "h-[400px] overflow-auto p-8"}`}
       >
         {type === "mermaid" ? (
           <MermaidDiagram key={id} chart={data.code || data} />
@@ -264,19 +264,19 @@ export const CodeCard: React.FC<CodeCardProps> = ({
         <CodeEditor
           language={language}
           value={code}
-          onChange={(val) => {}} // Read-only for now in the stream, or we could make it editable
-          onSubmit={() => {}}
+          onChange={(val) => { }} // Read-only for now in the stream, or we could make it editable
+          onSubmit={() => { }}
           onRun={() => onRun && onRun(code)}
           isSubmitting={false}
           isRunning={isRunning || false}
           isDiffMode={false}
           originalCode={code}
           modifiedCode=""
-          onApply={() => {}}
-          onCancel={() => {}}
+          onApply={() => { }}
+          onCancel={() => { }}
           output={output}
           isError={isError || false}
-          setLanguage={() => {}}
+          setLanguage={() => { }}
         />
       </div>
 
