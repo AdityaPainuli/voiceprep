@@ -6,7 +6,7 @@ export const PRICING_PLANS = [
       "10 real-time minutes",
       "100 diagrams",
       "3 video generations",
-      "Community support",
+      "Email support",
     ],
   },
   {
@@ -18,8 +18,7 @@ export const PRICING_PLANS = [
       "240 real-time minutes",
       "Unlimited diagrams",
       "20 video generations",
-      "Usage analytics",
-      "Email support",
+      "Priority support",
     ],
   },
   {
@@ -30,7 +29,7 @@ export const PRICING_PLANS = [
       "400 real-time minutes",
       "Unlimited diagrams",
       "40 video generations",
-      "Advanced analytics",
+      "Advanced Custom requests",
       "Team collaboration",
       "Priority support",
     ],
