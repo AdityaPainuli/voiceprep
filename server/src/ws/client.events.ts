@@ -19,6 +19,14 @@ export async function handleClientMessage(
       );
       break;
 
+    // Frontend will hit demo_init_session
+    case "demo_init_session":
+      await initializeSession(openAI, "tutor", "", "", {
+        ...data.config,
+        demoMode: true,
+      });
+      break;
+
     case "audio":
       openAI.send({
         type: "input_audio_buffer.append",

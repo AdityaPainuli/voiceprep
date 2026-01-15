@@ -1,6 +1,7 @@
 import { UserPlan } from "@prisma/client";
 
 export interface ClientContext {
+  mode?: string;
   userId: string;
   lessonPlanId: string;
 }

@@ -20,3 +20,9 @@ export const PLAN_LIMITS = {
     videos: Infinity,
   },
 } as const;
+
+export const DEMO_LIMITS = {
+  maxDiagrams: 5,
+  maxAnimations: 3,
+  maxSessionMs: 10 * 60 * 1000,
+};

@@ -16,8 +16,103 @@ export async function initializeSession(
       // not handling for now.
       instructions = "You are a senior software engineer interviewer...";
     } else if (mode == "tutor") {
-      const { topic, language, experience, domain, type } = config;
+      const { topic, language, experience, domain, type, demoMode } = config;
+
+      if (demoMode) {
       instructions = `
+    You are VoicePrep's AI Tutor running in DEMO MODE.
+
+    This is an onboarding demo designed to show how interactive learning works on VoicePrep.
+    The user may ask follow-up questions or doubts, and you should respond naturally.
+
+    ========================
+    DEMO CONSTRAINTS (STRICT)
+    ========================
+    - The demo session will be automatically ended by the system timer.
+    - Teach ONLY one core concept related to the topic.
+    - Do NOT ask the user to choose new topics.
+    - Do NOT ask to save progress.
+    - Do NOT mention accounts, pricing, or subscriptions.
+    - Use at minimum:
+      - ONE diagram
+    - Use at most:
+      - ONE animation (optional, only if it adds clear value).
+    - DO NOT call 'complete_lesson' unless the user explicitly indicates they are satisfied or wants to conclude.
+
+    ========================
+    DEMO TOPIC
+    ========================
+    Teach: "${topic}"
+    Audience: ${experience}
+    Goal: Make the user feel confident, curious, and comfortable asking doubts.
+
+    ========================
+    DEMO TEACHING FLOW
+    ========================
+
+    PHASE 1 — QUICK PLAN (VERY SHORT)
+    - Create a brief roadmap using 'create_note'
+    - 2–3 bullets max
+    - Ask:
+      "Does this plan look okay before we start?"
+
+    PHASE 2 — CORE EXPLANATION
+    - Explain the core idea of ${topic} clearly and simply.
+    - Generate ONE diagram using 'generate_diagram' to visually support the explanation.
+    - Keep explanations concise and intuitive.
+
+    PHASE 3 — OPTIONAL VISUALIZATION
+    - Generate ONE animation using 'generate_animation' ONLY if it meaningfully improves understanding.
+    - Otherwise, continue with verbal + diagram-based explanation.
+
+    PHASE 4 — UNDERSTANDING CHECK
+    - Ask a short question to verify understanding, such as:
+      "Does this make sense so far?" or
+      "Would you like me to clarify any part?"
+
+    PHASE 5 — DOUBT HANDLING LOOP
+    - If the user asks a question or expresses confusion:
+      - Answer calmly.
+      - Use a different explanation or visualization if helpful.
+    - After each response, gently ask:
+      "Any other doubts?" or
+      "Want to explore this a bit more?"
+
+    ========================
+    LESSON COMPLETION (VERY IMPORTANT)
+    ========================
+    - ONLY call 'complete_lesson' if the user clearly says something like:
+      - "I'm satisfied"
+      - "That makes sense now"
+      - "We can stop"
+      - "I'm done"
+    - PROCEDURE TO COMPLETE:
+      1. FIRST, speak a friendly closing summary to the user (2-3 sentences).
+      2. Suggest 1–2 related next topics verbally.
+      3. WAIT for your speech to finish (in your internal logic).
+      4. ONLY THEN call the 'complete_lesson' tool.
+      *DO NOT* put the summary inside the tool call arguments only. You MUST speak it.
+    - After calling 'complete_lesson', STOP teaching immediately.
+
+    ========================
+    STYLE
+    ========================
+    - Friendly
+    - Calm
+    - Conversational
+    - Short sentences
+    - Encouraging
+    - No markdown unless inside tool content
+
+    You are demonstrating how VoicePrep feels in a real learning conversation.
+    Let the user guide the depth. Do not rush to finish.
+
+    Start the demo lesson now.
+    `;
+  }
+
+      else {
+           instructions = `
       You are an expert, patient AI Tutor.
       
       You teach concepts step-by-step using structured thinking and visuals.
@@ -95,19 +190,22 @@ export async function initializeSession(
       
       Start by creating the lesson plan now.
       `;
+   }
 
-      await prisma.lessonPlan.update({
-        where: { userId, id: lessonPlanId },
-        data: {
-          gradeLevel: String(experience).toUpperCase() as GradeLevel,
-          programmingLanguage: String(
-            language
-          ).toUpperCase() as ProgrammingLanguage,
-          topic: topic,
-          domain: domain ?? "",
-          type: type,
-        },
-      });
+      if (!demoMode) {
+        await prisma.lessonPlan.update({
+          where: { userId, id: lessonPlanId },
+          data: {
+            gradeLevel: String(experience).toUpperCase() as GradeLevel,
+            programmingLanguage: String(
+              language
+            ).toUpperCase() as ProgrammingLanguage,
+            topic: topic,
+            domain: domain ?? "",
+            type: type,
+          },
+        });
+      }
     }
     openAIWs.send({
       type: "session.update",
@@ -143,29 +241,6 @@ export async function initializeSession(
     });
 
     openAIWs.send({ type: "response.create" });
-
-    // if (mode === "tutor") {
-    //   console.log("Sending initial message to llm.");
-    //   openAIWs.send({
-    //     type: "conversation.item.create",
-    //     item: {
-    //       type: "message",
-    //       role: "user",
-    //       content: [
-    //         {
-    //           type: "input_text",
-    //           text: `
-    //             I want to learn ${config.topic} in ${config.language}. I am a ${config.experience} level developer. Please act as my tutor.
-    //             CRITICAL INSTRUCTION: Start IMMEDIATELY by using the "create_note" tool to generate a "Lesson Plan" for this topic.
-    //             The note should outline what we will cover.
-    //             After creating the note, introduce yourself and ask if I'm ready to start with the first item.
-    //             `,
-    //         },
-    //       ],
-    //     },
-    //   });
-    //   openAIWs.send({ type: "response.create" });
-    // }
   };
 
   await runInit();

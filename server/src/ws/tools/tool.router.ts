@@ -43,49 +43,51 @@ export async function handleToolCall(
       );
       break;
     case "provide_code_correction":
-      await prisma.$transaction(async (tx) => {
-        const order = await getNextLessonItemOrder(ctx.lessonPlanId);
-        const code = await tx.code.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            code: args.correctedCode,
-            explanation: args.explanation,
-            language: args.language,
-          },
-        });
-
-        await tx.lessonItem.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            type: "CODE",
-            order,
-            codeId: code.id,
-          },
-        });
-
-        await tx.usageEvent.create({
-          data: {
-            userId: ctx.userId,
-            type: "CODE_GENERATED",
-            amount: 1,
-            metadata: {
+      if (ctx.mode !== "DEMO") {
+        await prisma.$transaction(async (tx) => {
+          const order = await getNextLessonItemOrder(ctx.lessonPlanId);
+          const code = await tx.code.create({
+            data: {
               lessonPlanId: ctx.lessonPlanId,
-              language: code.language,
-              code: code.code,
+              code: args.correctedCode,
+              explanation: args.explanation,
+              language: args.language,
             },
-          },
-        });
+          });
 
-        await tx.usageSummary.upsert({
-          where: { userId: ctx.userId },
-          create: {
-            userId: ctx.userId,
-            Code: 1,
-          },
-          update: { Code: { increment: 1 } },
+          await tx.lessonItem.create({
+            data: {
+              lessonPlanId: ctx.lessonPlanId,
+              type: "CODE",
+              order,
+              codeId: code.id,
+            },
+          });
+
+          await tx.usageEvent.create({
+            data: {
+              userId: ctx.userId,
+              type: "CODE_GENERATED",
+              amount: 1,
+              metadata: {
+                lessonPlanId: ctx.lessonPlanId,
+                language: code.language,
+                code: code.code,
+              },
+            },
+          });
+
+          await tx.usageSummary.upsert({
+            where: { userId: ctx.userId },
+            create: {
+              userId: ctx.userId,
+              Code: 1,
+            },
+            update: { Code: { increment: 1 } },
+          });
+          return code;
         });
-        return code;
-      });
+      }
       ws.send(
         JSON.stringify({
           type: "correction",
@@ -118,60 +120,62 @@ export async function handleToolCall(
       );
       break;
     case "generate_diagram":
-      try {
-        await assertusageAllowed(ctx.userId, "DIAGRAM");
-      } catch (e: any) {
-        ws.send(
-          JSON.stringify({
-            type: "limit_reached",
-            reason: e,
-          })
-        );
-      }
-      await prisma.$transaction(async (tx) => {
-        const order = await getNextLessonItemOrder(ctx.lessonPlanId);
-        const diagram = await tx.diagram.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            type: "CUSTOM",
-            metaData: { source: "mermaid", code: args.code },
-            code: args.code,
-            title: args.title,
-            description: args.description,
-          },
-        });
-
-        await tx.lessonItem.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            type: "DIAGRAM",
-            order,
-            diagramId: diagram.id,
-          },
-        });
-
-        await tx.usageEvent.create({
-          data: {
-            userId: ctx.userId,
-            type: "DIAGRAM_GENERATED",
-            amount: 1,
-            metadata: {
+      if (ctx.mode !== "DEMO") {
+        try {
+          await assertusageAllowed(ctx.userId, "DIAGRAM");
+        } catch (e: any) {
+          ws.send(
+            JSON.stringify({
+              type: "limit_reached",
+              reason: e,
+            })
+          );
+        }
+        await prisma.$transaction(async (tx) => {
+          const order = await getNextLessonItemOrder(ctx.lessonPlanId);
+          const diagram = await tx.diagram.create({
+            data: {
               lessonPlanId: ctx.lessonPlanId,
-              diagram_type: "mermaid",
+              type: "CUSTOM",
+              metaData: { source: "mermaid", code: args.code },
+              code: args.code,
+              title: args.title,
+              description: args.description,
             },
-          },
-        });
+          });
 
-        await tx.usageSummary.upsert({
-          where: { userId: ctx.userId },
-          create: {
-            userId: ctx.userId,
-            diagrams: 1,
-          },
-          update: { diagrams: { increment: 1 } },
+          await tx.lessonItem.create({
+            data: {
+              lessonPlanId: ctx.lessonPlanId,
+              type: "DIAGRAM",
+              order,
+              diagramId: diagram.id,
+            },
+          });
+
+          await tx.usageEvent.create({
+            data: {
+              userId: ctx.userId,
+              type: "DIAGRAM_GENERATED",
+              amount: 1,
+              metadata: {
+                lessonPlanId: ctx.lessonPlanId,
+                diagram_type: "mermaid",
+              },
+            },
+          });
+
+          await tx.usageSummary.upsert({
+            where: { userId: ctx.userId },
+            create: {
+              userId: ctx.userId,
+              diagrams: 1,
+            },
+            update: { diagrams: { increment: 1 } },
+          });
+          return diagram;
         });
-        return diagram;
-      });
+      }
       ws.send(
         JSON.stringify({
           type: "diagram",
@@ -182,29 +186,31 @@ export async function handleToolCall(
       );
       break;
     case "create_note":
-      await prisma.$transaction(async (tx) => {
-        const order = await getNextLessonItemOrder(ctx.lessonPlanId);
+      if (ctx.mode !== "DEMO") {
+        await prisma.$transaction(async (tx) => {
+          const order = await getNextLessonItemOrder(ctx.lessonPlanId);
 
-        const note = await tx.slide.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            title: args.title,
-            content: args.content,
-            tags: args.tags,
-            type: "NOTE",
-          },
-        });
+          const note = await tx.slide.create({
+            data: {
+              lessonPlanId: ctx.lessonPlanId,
+              title: args.title,
+              content: args.content,
+              tags: args.tags,
+              type: "NOTE",
+            },
+          });
 
-        await tx.lessonItem.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            type: "SLIDE",
-            order,
-            slideId: note.id,
-          },
+          await tx.lessonItem.create({
+            data: {
+              lessonPlanId: ctx.lessonPlanId,
+              type: "SLIDE",
+              order,
+              slideId: note.id,
+            },
+          });
+          return note;
         });
-        return note;
-      });
+      }
       ws.send(
         JSON.stringify({
           type: "note",
@@ -215,27 +221,29 @@ export async function handleToolCall(
       );
       break;
     case "create_slide":
-      await prisma.$transaction(async (tx) => {
-        const order = await getNextLessonItemOrder(ctx.lessonPlanId);
-        const slide = await tx.slide.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            title: args.title,
-            type: "SLIDE",
-            bulletPoints: args.bulletPoints,
-          },
-        });
+      if (ctx.mode !== "DEMO") {
+        await prisma.$transaction(async (tx) => {
+          const order = await getNextLessonItemOrder(ctx.lessonPlanId);
+          const slide = await tx.slide.create({
+            data: {
+              lessonPlanId: ctx.lessonPlanId,
+              title: args.title,
+              type: "SLIDE",
+              bulletPoints: args.bulletPoints,
+            },
+          });
 
-        await tx.lessonItem.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            type: "SLIDE",
-            order,
-            slideId: slide.id,
-          },
+          await tx.lessonItem.create({
+            data: {
+              lessonPlanId: ctx.lessonPlanId,
+              type: "SLIDE",
+              order,
+              slideId: slide.id,
+            },
+          });
+          return slide;
         });
-        return slide;
-      });
+      }
       ws.send(
         JSON.stringify({
           type: "slide",
@@ -246,59 +254,63 @@ export async function handleToolCall(
       break;
 
     case "generate_animation":
-      try {
-        await assertusageAllowed(ctx.userId, "VIDEO");
-      } catch (e: any) {
-        ws.send(
-          JSON.stringify({
-            type: "limit_reached",
-            reason: e,
-          })
-        );
+      if (ctx.mode !== "DEMO") {
+        try {
+          await assertusageAllowed(ctx.userId, "VIDEO");
+        } catch (e: any) {
+          ws.send(
+            JSON.stringify({
+              type: "limit_reached",
+              reason: e,
+            })
+          );
+        }
       }
       const { fileId, fileUrl, key } = await manim.generateVideo(args.code);
-      await prisma.$transaction(async (tx) => {
-        const order = await getNextLessonItemOrder(ctx.lessonPlanId);
-        const animation = await tx.animation.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            fileId: key, //later can be used for generating temp urls
-            metaData: { source: "manim", code: args.code },
-            fileUrl: fileUrl,
-          },
-        });
-
-        await tx.lessonItem.create({
-          data: {
-            lessonPlanId: ctx.lessonPlanId,
-            type: "ANIMATION",
-            order,
-            animationId: animation.id,
-          },
-        });
-
-        await tx.usageEvent.create({
-          data: {
-            userId: ctx.userId,
-            type: "VIDEO_GENERATED",
-            amount: 1,
-            metadata: {
+      if (ctx.mode !== "DEMO") {
+        await prisma.$transaction(async (tx) => {
+          const order = await getNextLessonItemOrder(ctx.lessonPlanId);
+          const animation = await tx.animation.create({
+            data: {
               lessonPlanId: ctx.lessonPlanId,
-              source: "manim",
+              fileId: key, //later can be used for generating temp urls
+              metaData: { source: "manim", code: args.code },
+              fileUrl: fileUrl,
             },
-          },
-        });
+          });
 
-        await tx.usageSummary.upsert({
-          where: { userId: ctx.userId },
-          create: {
-            userId: ctx.userId,
-            videos: 1,
-          },
-          update: { videos: { increment: 1 } },
+          await tx.lessonItem.create({
+            data: {
+              lessonPlanId: ctx.lessonPlanId,
+              type: "ANIMATION",
+              order,
+              animationId: animation.id,
+            },
+          });
+
+          await tx.usageEvent.create({
+            data: {
+              userId: ctx.userId,
+              type: "VIDEO_GENERATED",
+              amount: 1,
+              metadata: {
+                lessonPlanId: ctx.lessonPlanId,
+                source: "manim",
+              },
+            },
+          });
+
+          await tx.usageSummary.upsert({
+            where: { userId: ctx.userId },
+            create: {
+              userId: ctx.userId,
+              videos: 1,
+            },
+            update: { videos: { increment: 1 } },
+          });
+          return animation;
         });
-        return animation;
-      });
+      }
       ws.send(
         JSON.stringify({
           type: "animation",
@@ -308,16 +320,18 @@ export async function handleToolCall(
       );
       break;
     case "complete_lesson":
-      await prisma.$transaction(async (tx) => {
-        const lessonPlan = await tx.lessonPlan.update({
-          where: { id: ctx.lessonPlanId, userId: ctx.userId },
-          data: {
-            confidenceLevel: args.confidenceLevel,
-            summary: args.summary,
-          },
+      if (ctx.mode !== "DEMO") {
+        await prisma.$transaction(async (tx) => {
+          const lessonPlan = await tx.lessonPlan.update({
+            where: { id: ctx.lessonPlanId, userId: ctx.userId },
+            data: {
+              confidenceLevel: args.confidenceLevel,
+              summary: args.summary,
+            },
+          });
+          return lessonPlan;
         });
-        return lessonPlan;
-      });
+      }
       ws.send(
         JSON.stringify({
           type: "complete_lesson",

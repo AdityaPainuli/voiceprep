@@ -53,7 +53,11 @@ export const useVoiceAgent = () => {
   >([]);
   const [completed, setCompleted] = useState<boolean>(false);
   const [completionMeta, setCompletionMeta] = useState<{
-    summary?: string;
+    summary?: string | {
+        diagramsUsed: number;
+        animationUsed: number;
+        confidence: string;
+    };
     confidence?: string;
   } | null>(null);
   const completionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -164,11 +168,11 @@ export const useVoiceAgent = () => {
   const nextStartTimeRef = useRef<number>(0);
 
   const startSession = useCallback(
-    (mode: "interview" | "tutor", config?: any) => {
+    (mode: "interview" | "tutor" | "demo", config?: any) => {
       if (loading) {
         return;
       }
-      if (!token) {
+      if (!token && mode !== "demo") {
         console.error("No token provided");
         return;
       }
@@ -176,7 +180,12 @@ export const useVoiceAgent = () => {
 
       try {
         // TODO: Add lessonPlanID once existing lessonPlan needs to be continued.
-        const ws = new WebSocket(`${BASE_WS}?token=${token}`);
+        let wsUrl = `${BASE_WS}?token=${token}`;
+        if (mode === "demo") {
+          wsUrl = `${BASE_WS}/demo`;
+        }
+
+        const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
         ws.onopen = () => {
@@ -185,7 +194,7 @@ export const useVoiceAgent = () => {
 
           ws.send(
             JSON.stringify({
-              type: "init_session",
+              type: mode === "demo" ? "demo_init_session" : "init_session",
               mode,
               config,
             })
@@ -293,6 +302,26 @@ export const useVoiceAgent = () => {
             completionTimerRef.current = setTimeout(() => {
               stopSession();
             }, 5000);
+          }
+
+          if (data.type === "demo-complete") {
+            setCompleted(true);
+            // demo-complete sends summary object directly
+            setCompletionMeta({
+              summary: data.summary,
+              confidence: data.summary?.confidence || "Good",
+            });
+            // Don't auto-stop session via timer immediately, or let the user read the modal?
+            // The server closes the socket almost immediately after sending this.
+            // But we want the modal to persist.
+            // check stopSession implementation: it sets completed to false if called without args?
+            // stopSession only sets completed to false in cancelCompletion -> wait, stopSession calls stopAudio, etc.
+            // The modal relies on `completed` being true.
+            // Let's check stopSession again. It does NOT set completed to false.
+            // cancelCompletion sets completed to false.
+            // stopSession sets isSessionActive to false.
+            // The modal in DemoClient shows if `completed` is true.
+            // So we just need to setCompleted(true).
           }
 
           if (data.type === "chart") {
@@ -600,6 +629,27 @@ export const useVoiceAgent = () => {
       console.error("Error playing audio:", error);
     }
   };
+
+  // Auto-close session after audio finishes if lesson is completed
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (completed && isSessionActive) {
+      interval = setInterval(() => {
+        if (audioContextRef.current && audioContextRef.current.state === "running") {
+          const { currentTime } = audioContextRef.current;
+          // Check if we have played past the scheduled end time (with a small buffer)
+          // Also ensuring nextStartTimeRef has actually been set (it starts at 0)
+          if (nextStartTimeRef.current > 0 && currentTime >= nextStartTimeRef.current + 0.5) {
+             console.log("Audio finished and session completed. Closing connection.");
+             stopSession(); 
+          }
+        }
+      }, 1000); 
+    }
+
+    return () => clearInterval(interval);
+  }, [completed, isSessionActive, stopSession]);
 
   return {
     isSessionActive,
