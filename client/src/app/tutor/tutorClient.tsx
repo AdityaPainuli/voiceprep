@@ -333,11 +333,10 @@ export default function TutorClient() {
 
             <div className="flex items-center gap-4 mb-4">
               <div
-                className={`w-16 h-16 rounded-xl flex items-center justify-center ${
-                  tutorType === "general"
-                    ? "bg-blue-500/20"
-                    : "bg-purple-500/20"
-                }`}
+                className={`w-16 h-16 rounded-xl flex items-center justify-center ${tutorType === "general"
+                  ? "bg-blue-500/20"
+                  : "bg-purple-500/20"
+                  }`}
               >
                 {tutorType === "general" ? (
                   <svg
@@ -439,19 +438,18 @@ export default function TutorClient() {
                       key={lang}
                       type="button"
                       onClick={() => setConfig({ ...config, language: lang })}
-                      className={`px-4 py-3 rounded-lg text-sm font-medium capitalize transition-all ${
-                        config.language === lang
-                          ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25 border-2 border-purple-400"
-                          : "bg-gray-700/50 text-gray-300 hover:bg-gray-600 border-2 border-transparent"
-                      }`}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium capitalize transition-all ${config.language === lang
+                        ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25 border-2 border-purple-400"
+                        : "bg-gray-700/50 text-gray-300 hover:bg-gray-600 border-2 border-transparent"
+                        }`}
                     >
                       {lang === "CPP"
                         ? "C++"
                         : lang === "JAVASCRIPT"
-                        ? "JS"
-                        : lang === "TYPESCRIPT"
-                        ? "TS"
-                        : lang}
+                          ? "JS"
+                          : lang === "TYPESCRIPT"
+                            ? "TS"
+                            : lang}
                     </button>
                   ))}
                 </div>
@@ -486,13 +484,12 @@ export default function TutorClient() {
                     onClick={() =>
                       setConfig({ ...config, experience: level.value })
                     }
-                    className={`p-4 rounded-lg text-left transition-all border-2 ${
-                      config.experience === level.value
-                        ? tutorType === "general"
-                          ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/25"
-                          : "bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-500/25"
-                        : "bg-gray-700/50 border-transparent text-gray-300 hover:bg-gray-600"
-                    }`}
+                    className={`p-4 rounded-lg text-left transition-all border-2 ${config.experience === level.value
+                      ? tutorType === "general"
+                        ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/25"
+                        : "bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-500/25"
+                      : "bg-gray-700/50 border-transparent text-gray-300 hover:bg-gray-600"
+                      }`}
                   >
                     <div className="font-semibold mb-1">{level.label}</div>
                     <div className="text-xs opacity-80">{level.desc}</div>
@@ -503,11 +500,10 @@ export default function TutorClient() {
 
             <button
               type="submit"
-              className={`w-full font-bold py-4 px-6 rounded-lg shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] ${
-                tutorType === "general"
-                  ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-blue-500/25"
-                  : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-purple-500/25"
-              } text-white text-lg`}
+              className={`w-full font-bold py-4 px-6 rounded-lg shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] ${tutorType === "general"
+                ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-blue-500/25"
+                : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-purple-500/25"
+                } text-white text-lg`}
             >
               Start Learning Session
             </button>
@@ -545,8 +541,9 @@ export default function TutorClient() {
                   </h2>
 
                   <p className="text-gray-300 mb-4">
-                    {completionMeta?.summary ||
-                      "You've completed this lesson successfully."}
+                    {typeof completionMeta?.summary === "string"
+                      ? completionMeta.summary
+                      : "You've completed this lesson successfully."}
                   </p>
 
                   {completionMeta?.confidence && (
@@ -591,9 +588,8 @@ export default function TutorClient() {
           <div className="flex-1 overflow-y-auto p-6 bg-gray-800/30">
             <div className="flex items-center justify-between mb-6">
               <h3
-                className={`text-sm font-bold uppercase tracking-wider ${
-                  tutorType === "general" ? "text-blue-400" : "text-purple-400"
-                }`}
+                className={`text-sm font-bold uppercase tracking-wider ${tutorType === "general" ? "text-blue-400" : "text-purple-400"
+                  }`}
               >
                 Session Configuration
               </h3>
@@ -701,11 +697,10 @@ export default function TutorClient() {
             <div className="mt-6 p-4 bg-gradient-to-br from-gray-700/30 to-gray-800/30 rounded-lg border border-gray-700/50">
               <div className="text-xs text-gray-400 mb-2">Learning Type</div>
               <div
-                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
-                  tutorType === "general"
-                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                    : "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                }`}
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${tutorType === "general"
+                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                  : "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                  }`}
               >
                 {tutorType === "general" ? (
                   <>
@@ -753,11 +748,10 @@ export default function TutorClient() {
           <div className="h-16 border-b border-gray-800 flex items-center px-6 justify-between bg-[#161b22]">
             <div className="flex items-center gap-3">
               <div
-                className={`p-2 rounded-lg ${
-                  tutorType === "general"
-                    ? "bg-blue-500/10 text-blue-400"
-                    : "bg-purple-500/10 text-purple-400"
-                }`}
+                className={`p-2 rounded-lg ${tutorType === "general"
+                  ? "bg-blue-500/10 text-blue-400"
+                  : "bg-purple-500/10 text-purple-400"
+                  }`}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -788,11 +782,10 @@ export default function TutorClient() {
 
             <div className="flex items-center gap-2">
               <span
-                className={`px-3 py-1 text-xs font-medium rounded-full ${
-                  isSessionActive
-                    ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                    : "bg-gray-700/50 text-gray-400 border border-gray-600/30"
-                }`}
+                className={`px-3 py-1 text-xs font-medium rounded-full ${isSessionActive
+                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                  : "bg-gray-700/50 text-gray-400 border border-gray-600/30"
+                  }`}
               >
                 {isSessionActive ? "● Active" : "○ Inactive"}
               </span>
@@ -909,15 +902,15 @@ export default function TutorClient() {
                       onSave={
                         item.title.toLowerCase().includes("plan")
                           ? (newContent) => {
-                              // Update local state immediately
-                              updateLearningItem(item.id, {
-                                content: newContent,
-                              });
-                              // Notify AI
-                              sendMessage(
-                                `I have updated the lesson plan. Here is the new version:\n\n${newContent}\n\nPlease confirm and let's start.`
-                              );
-                            }
+                            // Update local state immediately
+                            updateLearningItem(item.id, {
+                              content: newContent,
+                            });
+                            // Notify AI
+                            sendMessage(
+                              `I have updated the lesson plan. Here is the new version:\n\n${newContent}\n\nPlease confirm and let's start.`
+                            );
+                          }
                           : undefined
                       }
                     />

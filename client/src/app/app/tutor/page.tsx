@@ -1,5 +1,6 @@
+import TutorClient from "@/app/tutor/tutorClient";
 import { Suspense } from "react";
-import TutorClient from "./tutorClient";
+
 
 export default function TutorPage() {
   return (
