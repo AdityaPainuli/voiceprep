@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { ScrollReveal } from "@/components/ScrollReveal";
+import { PRICING_PLANS } from "@/lib/plans";
+import Link from "next/link";
 
 export default function LandingPage() {
     const { user, loading } = useAuth();
@@ -18,7 +20,18 @@ export default function LandingPage() {
     }, [user, loading, router]);
 
     return (
-        <div className="min-h-screen bg-[#0A0A0A] text-white">
+        <div className="min-h-screen bg-[#0A0A0A] text-white relative overflow-hidden selection:bg-indigo-500/30">
+            {/* Background Effects */}
+            <div className="fixed inset-0 z-0 pointer-events-none">
+                {/* Grid Pattern */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+
+                {/* Ambient Glows */}
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl opacity-50 mix-blend-screen animate-pulse"></div>
+                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl opacity-50 mix-blend-screen animate-pulse delay-1000"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-3xl opacity-30 mix-blend-screen"></div>
+            </div>
+
             {/* Navigation */}
             <nav className="border-b border-white/5 bg-black/50 backdrop-blur-md fixed w-full z-50">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -46,7 +59,7 @@ export default function LandingPage() {
             </nav>
 
             {/* Hero Section */}
-            <section className="relative pt-32 pb-20 overflow-hidden">
+            <section className="relative pt-32 pb-20 overflow-hidden z-10">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-[#0A0A0A] to-[#0A0A0A]" />
 
                 <div className="max-w-7xl mx-auto px-6 relative z-10">
@@ -84,9 +97,9 @@ export default function LandingPage() {
             </section>
 
             {/* Product Demo Video */}
-            <section className="py-20 bg-[#0A0A0A] relative overflow-hidden">
+            <section className="py-20 relative overflow-hidden">
                 <div className="max-w-6xl mx-auto px-6 relative">
-                    <div className="text-center mb-12 relative z-20 bg-[#0A0A0A]">
+                    <div className="text-center mb-12 relative z-20">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-sm font-medium border border-indigo-500/20 mb-4">
                             <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
@@ -140,7 +153,7 @@ export default function LandingPage() {
             </section>
 
             {/* Visual Learning Gallery */}
-            <section className="py-24 bg-[#0A0A0A] border-t border-white/5">
+            <section className="py-24 border-t border-white/5">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-16">
                         <ScrollReveal width="100%">
@@ -271,8 +284,37 @@ export default function LandingPage() {
                 </div>
             </section>
 
+
+            {/* Pricing Section */}
+            <section className="py-24 border-t border-white/5 relative">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-indigo-900/10 via-[#0A0A0A] to-[#0A0A0A]" />
+                <div className="max-w-7xl mx-auto px-6 relative z-10">
+                    <div className="text-center mb-16">
+                        <ScrollReveal width="100%">
+                            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">Simple, Transparent Pricing</h2>
+                        </ScrollReveal>
+                        <ScrollReveal delay={0.2} width="100%">
+                            <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+                                Start for free and upgrade as you master new skills.
+                            </p>
+                        </ScrollReveal>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {PRICING_PLANS.map((plan, i) => (
+                            <PricingCard
+                                key={plan.title}
+                                {...plan}
+                                delay={0.1 + i * 0.1}
+                            />
+                        ))}
+                    </div>
+
+                </div>
+            </section>
+
             {/* Features Grid */}
-            <section className="py-24 bg-[#0A0A0A]">
+            <section className="py-24">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="grid md:grid-cols-3 gap-8">
                         <FeatureCard
@@ -305,7 +347,108 @@ export default function LandingPage() {
                     </div>
                 </div>
             </section>
+
+            {/* Footer */}
+            <footer className="py-12 bg-black border-t border-white/5">
+                <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <span className="font-bold text-white">VP</span>
+                        </div>
+                        <span className="font-bold text-xl tracking-tight text-white">VoicePrep</span>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        <a
+                            href="https://x.com/aditya_painuli"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-gray-400 hover:text-white transition-colors"
+                        >
+                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                            </svg>
+                        </a>
+                        <a
+                            href="https://www.linkedin.com/in/aditya-painuli-422996218/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-gray-400 hover:text-white transition-colors"
+                        >
+                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fillRule="evenodd" d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" clipRule="evenodd" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </footer>
         </div>
+    );
+}
+
+
+function PricingCard({
+    title,
+    price,
+    period = "",
+    features,
+    featured = false,
+    delay = 0
+}: {
+    title: string;
+    price: string;
+    period?: string;
+    features: string[];
+    featured?: boolean;
+    delay?: number;
+}) {
+    return (
+        <ScrollReveal delay={delay} width="100%">
+            <div className={`
+                relative p-8 rounded-2xl border transition-all duration-300 h-full flex flex-col
+                ${featured
+                    ? "bg-indigo-900/20 border-indigo-500/50 hover:bg-indigo-900/30 hover:shadow-indigo-500/20 hover:shadow-2xl scale-105 z-10"
+                    : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
+                }
+            `}>
+                {featured && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full text-xs font-bold text-white uppercase tracking-wider">
+                        Most Popular
+                    </div>
+                )}
+
+                <div className="mb-8">
+                    <h3 className={`text-sm font-bold tracking-wider uppercase mb-2 ${featured ? "text-indigo-400" : "text-gray-400"}`}>
+                        {title}
+                    </h3>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-4xl font-bold text-white">{price}</span>
+                        {period && <span className="text-gray-400 text-sm">{period}</span>}
+                    </div>
+                </div>
+
+                <ul className="space-y-4 mb-8 flex-1">
+                    {features.map((feature, i) => (
+                        <li key={i} className="flex items-start gap-3 text-sm text-gray-300">
+                            <svg className={`w-5 h-5 shrink-0 ${featured ? "text-indigo-400" : "text-green-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            {feature}
+                        </li>
+                    ))}
+                </ul>
+
+                <button className={`
+                    w-full py-3 rounded-xl font-semibold transition-all cursor-pointer
+                    ${featured
+                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:shadow-lg hover:shadow-indigo-500/25 text-white"
+                        : "bg-white/10 hover:bg-white/20 text-white"
+                    }
+                `}>
+                    <Link href={"https://calendar.app.google/oRRB2riEpXaV5vbz8"} target="_blank">Get Started</Link>
+                </button>
+            </div>
+        </ScrollReveal>
     );
 }
 
