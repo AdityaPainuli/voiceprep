@@ -1,3 +1,8 @@
+// Basic calculation for the price -
+// 0.06/minute Real-time tokens cost
+// 0.50 per animation and infra cost included for servers and other things.
+// 25% profit margin (can be deducted based on infra maintainance)
+
 export const PRICING_PLANS = [
   {
     title: "FREE",

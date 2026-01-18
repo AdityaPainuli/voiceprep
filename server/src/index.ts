@@ -4,6 +4,7 @@ import cors from "@fastify/cors";
 import { registerRoutes } from "./routes";
 import { registerWebSocket } from "./ws";
 import { execSync } from "child_process";
+import { prisma } from "./db/client";
 
 dotenv.config();
 
@@ -37,6 +38,22 @@ fastify.register(cors, {
 registerRoutes(fastify);
 registerWebSocket(fastify);
 
-fastify.get("/api/health", async (request, response) => {
-  return response.code(200).send({ status: "ok" });
+fastify.get("/health", async (request, response) => {
+  try {
+    // 🔥 This wakes the DB
+    await prisma.$queryRaw`SELECT 1`;
+
+    return response.code(200).send({
+      status: "ok",
+      db: "connected",
+      timestamp: Date.now(),
+    });
+  } catch (err) {
+    request.log.error(err, "Health check failed");
+
+    return response.code(503).send({
+      status: "error",
+      db: "down",
+    });
+  }
 });
