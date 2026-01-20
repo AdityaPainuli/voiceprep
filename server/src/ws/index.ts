@@ -14,7 +14,7 @@ export function registerWebSocket(fastify: FastifyInstance) {
       handleDemoWsConnection(ws, req);
       return;
     }
-    if (url.startsWith("/ws")) {
+    if (url.startsWith("/?token=")) {
       console.log("Auth WS connection");
       handleWsConnection(ws, req);
       return;
