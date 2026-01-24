@@ -42,10 +42,11 @@ export default function DemoClient() {
         }
     }, [learningStream.length]);
 
+    // Demo Topics 
     const handleStartDemo = () => {
         setHasStarted(true);
         startSession("demo", {
-            topic: "How internet works?",
+            topic: "What is a Balance sheet?",
             experience: "beginner",
             type: "general"
         });
